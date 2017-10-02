@@ -1,0 +1,116 @@
+﻿module read_write
+	contains
+
+	subroutine readInFileOne(name1, NI, NJ, NK, X, Y, Z)
+		integer :: NI, NJ, NK, i, j, k
+		real*8  :: X(NI), Y(NJ), Z(NK)
+		character(20) :: name1
+
+		OPEN(UNIT=1,FILE=name1,STATUS='UNKNOWN')
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					read(1,*)x(i),y(j),z(k)
+				enddo
+			enddo
+		enddo
+		close(1)
+
+	end subroutine
+
+	subroutine readInFileThree(name2, NI, NJ, NK, VCV)
+		integer :: NI, NJ, NK, i, j, k
+		real*8  ::  VCV(NI*NJ*NK)
+		character(20) ::  name2
+
+		OPEN(UNIT=2,FILE=name2,STATUS='UNKNOWN')
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					read(2,*) vcv(i+(j-1)*NI+(k-1)*NI*NJ)
+				enddo
+			enddo
+		enddo
+		close(2)
+
+	end subroutine
+
+	subroutine readInFileThreeAndOne(name1, name2, NI, NJ, NK, X, Y, Z, VCV)
+		integer :: NI, NJ, NK, i, j, k
+		real*8  :: X(NI), Y(NJ), Z(NK), VCV(NI*NJ*NK)
+		character(20) :: name1, name2
+
+		OPEN(UNIT=1,FILE=name1,STATUS='UNKNOWN')
+		OPEN(UNIT=2,FILE=name2,STATUS='UNKNOWN')
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					read(1,*)x(i),y(j),z(k)
+					read(2,*) vcv(i+(j-1)*NI+(k-1)*NI*NJ)
+				enddo
+			enddo
+		enddo
+		close(1)
+		close(2)
+
+	end subroutine
+	!---------------------------------------------------------------------
+
+	!МЕТОДООМ МОЖНО СРАЗУ ЗАПИСАТЬ И ТРЕХМЕРНЫЙ МАССИ ВИ ОДНОМЕРНЫЕ
+	!НО НЕ ЗАХОТЕЛОСЬ ИМ ПОЛЬЗОВАТЬСЯ И СОЗДАЛ ДВА МЕТОДА ПО ЗАПИСИ 
+	!ОДНОМЕРНОГО И ТРЕХМЕРНОГО МАССИВА ОТДЕЛЬНО
+	subroutine writeInFileOne(name1, NI, NJ, NK, X, Y, Z)
+		integer :: NI, NJ, NK, i, j, k
+		real*8  :: X(NI), Y(NJ), Z(NK)
+		character(20) :: name1
+
+		OPEN(UNIT=1,FILE=name1,STATUS='UNKNOWN')
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					write(1,*)x(i),y(j),z(k)
+				enddo
+			enddo
+		enddo
+		close(1)
+
+	end subroutine
+
+	subroutine writeInFileThree(name2, NI, NJ, NK, VCV)
+		integer :: NI, NJ, NK, i, j, k
+		real*8  ::  VCV(NI*NJ*NK)
+		character(20) ::  name2
+
+		OPEN(UNIT=2,FILE=name2,STATUS='UNKNOWN')
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					write(2,*) vcv(i+(j-1)*NI+(k-1)*NI*NJ)
+				enddo
+			enddo
+		enddo
+		close(2)
+
+	end subroutine
+
+	subroutine writeInFileThreeAndOne(name1, name2, NI, NJ, NK, X, Y, Z, VCV)
+		integer :: NI, NJ, NK, i, j, k
+		real*8  :: X(NI), Y(NJ), Z(NK), VCV(NI*NJ*NK)
+		character(20) :: name1, name2
+
+		OPEN(UNIT=1,FILE=name1,STATUS='UNKNOWN')
+		OPEN(UNIT=2,FILE=name2,STATUS='UNKNOWN')
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					write(1,*)x(i),y(j),z(k)
+					write(2,*) vcv(i+(j-1)*NI+(k-1)*NI*NJ)
+				enddo
+			enddo
+		enddo
+		close(1)
+		close(2)
+
+	end subroutine
+
+end module read_write

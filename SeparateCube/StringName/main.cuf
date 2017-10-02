@@ -1,0 +1,30 @@
+﻿program stringName_configure
+	
+	use making_file
+
+	implicit none
+
+	integer       :: i,j,k, NI, NJ, NK
+	character(30) :: constNamePart, fullName, buffString
+
+	!TODO:  1) ЗДЕСЬ НУЖНО СДЕЛАТЬ ДИНАМИЧЕСКОЕ ЗАДАНИЕ ИМЕНИ ФАЙЛА, Т. Е. НУЖНО В ЦИКЛЕ
+	!		  ВЫЗЫВАТЬ СОЗДАНИЕ ФАЙЛА И ЧТОБЫ ПРОГРАММА САМА ЗАДАВАЛА УНИКАЛЬНЫЕ ИМЕНА ФАЙЛОВ
+	!       2) ТАК ЖЕ МОЖНО СДЕЛАТЬ ПРОЦЕДУРУ ПО СОЗДАНИЮ ФАЙЛОВ, ИМЕНА БЕРУТСЯ ИЗ МАССИВА
+
+	NI = 20
+	NJ = 20
+	NK = 20
+	
+	write(constNamePart,*)"RWFile/"
+	call makeFile(constNamePart, fullName, NI, NJ, NK)
+	
+	OPEN(UNIT=2,FILE=fullName,STATUS='UNKNOWN')
+
+	read(2,'(a30)')buffString
+	write(*,*)"file contains: ",buffString
+
+	close(2)
+	write(*,*) "end"
+	read(*,*)
+
+end program stringName_configure

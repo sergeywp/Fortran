@@ -1,0 +1,76 @@
+﻿program arrays_write_read
+	
+	use read_write
+	use gpu_kernels_read
+
+	implicit none
+!ВОЗМОЖНЫЙ ФОРМАТ ЗАПИСИ
+!5	format (15f15.5)
+	integer i,j,k
+
+	real*8, device, allocatable  :: x_d(:), y_d(:), z_d(:), vcv_d(:)
+	integer, device, allocatable :: NI_d, NJ_d, NK_d
+
+	real*8, allocatable :: x_h(:), y_h(:), z_h(:), vcv_h(:), read_buff(:)
+	integer             :: NI_h = 22, NJ_h = 22, NK_h = 22
+	character(20)       :: str,name1!,name2
+
+	write(*,*)"device allocate"
+	allocate(x_d(NI_h), y_d(NJ_h), z_d(NK_h), vcv_d(NI_h*NJ_h*NK_h), NI_d, NJ_d, NK_d, read_buff(4))
+	write(*,*)" host  allocate"
+	allocate(x_h(NI_h), y_h(NJ_h), z_h(NK_h), vcv_h(NI_h*NJ_h*NK_h))
+	
+	NI_d = NI_h
+	NJ_d = NJ_h
+	NK_d = NK_h
+
+	!------------------------------------------------------------------------------------------------------
+	!             ЗАПОЛНЕНИЕ МАССИВОВ
+	!------------------------------------------------------------------------------------------------------
+	call full_x<<<dim3(NI_h+NJ_h+NK_h/32+1,1,1), dim3(32,1,1)>>>(x_d, y_d, z_d, NI_d, NJ_d, NK_d)
+	call full_vcv<<<dim3(NI_h*NJ_h*NK_h/32+1,1,1), dim3(32,1,1)>>>(vcv_d, x_d, y_d, z_d, NI_d, NJ_d, NK_d)
+
+	vcv_h = vcv_d
+	x_h = x_d
+	y_h = y_d
+	z_h = z_d
+
+	!------------------------------------------------------------------------------------------------------
+	!             ЗАПИСЬ РЕЗУЛЬТАТОВ В ФАЙЛ
+	!------------------------------------------------------------------------------------------------------
+	name1 = 'xyz.read'
+	call writeInFileOne(name1, NI_h, NJ_h, NK_h, x_h, y_h, z_h)
+	name1 = 'vcv.read'
+	call writeInFileThree(name1, NI_h, NJ_h, NK_h, vcv_h)
+	!------------------------------------------------------------------------------------------------------
+	!             УДАЛЕНИЕ МАССИВОВ ИЗ ПАМЯТИ, ОБРАТНОЕ ОПРЕДЕЛЕНИЕ ПАМЯТИ
+	!                  И ПРОВЕРКА ЧТО МАССИВЫ НЕ ЗАПОЛНЕНЫ
+	!------------------------------------------------------------------------------------------------------
+	deallocate(x_h,y_h,z_h,vcv_h)
+	allocate(x_h(NI_h), y_h(NJ_h), z_h(NK_h), vcv_h(NI_h*NJ_h*NK_h))
+	name1 = 'xyz1.read'
+	call writeInFileOne(name1, NI_h, NJ_h, NK_h, x_h, y_h, z_h)
+	name1 = 'vcv1.read'
+	call writeInFileThree(name1, NI_h, NJ_h, NK_h, vcv_h)
+	
+	!------------------------------------------------------------------------------------------------------
+	!             ЧТЕНИЕ ИЗ ФАЙЛА И ЗАПИСЬ ПРОЧИТАННЫХ ДАННЫХ В НОВЫЙ ФАЙЛ
+	!------------------------------------------------------------------------------------------------------
+	
+	!TODO:  НЕ ПОНЯТНО КАКИМ ОБРАЗОМ ПРОИСХОДИТ ЧТЕНИЕ ЧАСТИ ФАЙЛА, ПОЭТОМУ БЫЛО РЕШЕНО ПОПРОБОВАТЬ СДЕЛАТЬ
+	!		ЧТЕНИЕ НЕ ЧАСТИ ФАЙЛА, А ПРОСТО ЗАПИСЫВАТЬ В РАЗЛИЧНЫЕ ФАЙЛЫ. ДЛЯ ТОГО ЧТОБЫ ЗАПИСЫВАТЬ ИНФУ В РАЗЛИЧНЫЕ 
+	!		ФАЙЛЫ, НУЖНО ДАВАТЬ ФАЙЛАМ УНИКАЛЬНЫЕ ИМЕНА, А ДЛЯ ТОГО ЧТОБЫ ДАВАТЬ УНИКАЛЬНЫЕ ИМЕНА,
+	!		НУЖНО ПОНЯТЬ КАК РАБОТАТЬ СО СТРОКАМИ В ФОРТРАНЕ. ПОЭТОМУ НУЖНО СДУЛАТЬ ПРИЛОЖЕНИЕ ПО РАБОТЕ СО СТРОКАМИ
+	
+	name1 = 'xyz.read'
+	call readInFileOne(name1, NI_h, NJ_h, NK_h, x_h, y_h, z_h)
+	name1 = 'vcv.read'
+	call readInFileThree(name1, NI_h, NJ_h, NK_h, vcv_h)
+	name1 = 'xyz1_copy.read'
+	call writeInFileOne(name1, NI_h, NJ_h, NK_h, x_h, y_h, z_h)
+	name1 = 'vcv1_copy.read'
+	call writeInFileThree(name1, NI_h, NJ_h, NK_h, vcv_h)
+	
+	write(*,*)'end'
+	
+end program arrays_write_read

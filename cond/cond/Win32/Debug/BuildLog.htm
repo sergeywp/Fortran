@@ -1,0 +1,20 @@
+<HTML>
+<H1>PVF Build Log</H1>
+<P>Compiling Project  ...</P>
+<P>CondUser.f90</P>
+<P>c:\program files\pgi\win32\10.8\bin\pgfortran.exe -Hx,123,8 -Hx,123,0x40000 -Hx,0,0x40000000 -Mx,0,0x40000000 -Hx,0,0x20000000 -g -Bstatic -Mbackslash -Mfree -I"c:\program files\pgi\win32\10.8\include" -I"C:\Program Files\PGI\Microsoft Open Tools 10\include" -I"C:\Program Files\PGI\Microsoft Open Tools 10\PlatformSDK\include" -Minform=warn -module "Win32\Debug" -o "Win32\Debug\CondUser.obj"  -c "C:\Programming\CUDA fortran\cond\cond\CondUser.f90"</P>
+<P>Command exit code: 0</P>
+<P>Command output: [C:\Programming\CUDA fortran\cond\cond\CondUser.f90(112) : warning W0093 : Type conversion of expression performed
+  0 inform,   1 warnings,   0 severes, 0 fatal for output
+]</P>
+<hr>
+<P>Cond3d.f90</P>
+<P>c:\program files\pgi\win32\10.8\bin\pgfortran.exe -Hx,123,8 -Hx,123,0x40000 -Hx,0,0x40000000 -Mx,0,0x40000000 -Hx,0,0x20000000 -g -Bstatic -Mbackslash -Mfree -I"c:\program files\pgi\win32\10.8\include" -I"C:\Program Files\PGI\Microsoft Open Tools 10\include" -I"C:\Program Files\PGI\Microsoft Open Tools 10\PlatformSDK\include" -Minform=warn -module "Win32\Debug" -o "Win32\Debug\Cond3d.obj"  -c "C:\Programming\CUDA fortran\cond\cond\Cond3d.f90"</P>
+<P>Command exit code: 0</P>
+<hr>
+<P>Linking...</P>
+<P>c:\program files\pgi\win32\10.8\bin\pgfortran.exe -Wl,/libpath:"c:\program files\pgi\win32\10.8\lib" -Wl,/libpath:"C:\Program Files\PGI\Microsoft Open Tools 10\lib" -Wl,/libpath:"C:\Program Files\PGI\Microsoft Open Tools 10\PlatformSDK\lib" -Yl,"C:\Program Files\PGI\Microsoft Open Tools 10\bin" -g -Bstatic -o "C:\Programming\CUDA fortran\cond\cond\Win32\Debug\cond.exe"  "Win32\Debug\Cond3d.obj" "Win32\Debug\CondUser.obj" </P>
+<P>Command exit code: 0</P>
+<P>cond build succeeded.
+</P>
+</HTML>

@@ -1,0 +1,132 @@
+﻿module div_arr
+	contains
+	
+	subroutine read_mass_three_hdd(X, consNamePart, NI, NJ, NK, i, j, k, NDI, NDJ, NDK) ! тут создаются части массива, которые сохраняются на жестком диске
+		integer :: NI, NJ, NK, i, ii, j, jj, k, kk, l
+		real*8  :: X(NI*NJ*NK)
+		character(30) :: fullname, consNamePart, changeNamePart
+		l=i+(j-1)*NDI +(k-1)*NDJ 
+		write(changeNamePart,'(i3,a4)')l,".txt"
+		fullName = trim(consNamePart)//trim(changeNamePart)
+
+		OPEN(UNIT=2,FILE=fullName,STATUS='UNKNOWN')
+		!------------запись в файл-------------------
+		do ii=1, NI
+			do jj=1, NJ
+				do kk=1, NK
+					read(2,'(f19.5)') X(ii + (jj-1)*NI + (kk-1)*NI*NJ)
+				enddo
+			enddo
+		enddo		
+		!--------------------------------------------
+		close(2)
+	end subroutine
+
+	subroutine write_mass_three_hdd(X, consNamePart, NI, NJ, NK, i, j, k, NDI, NDJ, NDK) ! тут создаются части массива, которые сохраняются на жестком диске
+		integer :: NI, NJ, NK, i, ii, j, jj, k, kk, l
+		real*8  :: X(NI*NJ*NK)
+		character(30) :: fullname, consNamePart, changeNamePart
+		l=i+(j-1)*NDI +(k-1)*NDJ 
+		write(changeNamePart,'(i3,a4)')l,".txt"
+		fullName = trim(consNamePart)//trim(changeNamePart)
+
+		OPEN(UNIT=2,FILE=fullName,STATUS='UNKNOWN')
+		!------------запись в файл-------------------
+		do ii=1, NI
+			do jj=1, NJ
+				do kk=1, NK
+					write(2,'(f19.5)') X(ii + (jj-1)*NI + (kk-1)*NI*NJ)
+				enddo
+			enddo
+		enddo		
+		!--------------------------------------------
+		close(2)
+	end subroutine
+
+	subroutine write_mass_one_hdd(X, consNamePart, NI, i) ! тут создаются части массива, которые сохраняются на жестком диске
+		integer :: NI, i, ii
+		real*8  :: X(NI)
+		character(30) :: fullname, consNamePart, changeNamePart
+
+		write(changeNamePart,'(i3,a4)')i,".txt"
+		fullName = trim(consNamePart)//trim(changeNamePart)
+
+		OPEN(UNIT=2,FILE=fullName,STATUS='UNKNOWN')
+		!------------запись в файл-------------------
+		do ii=1, NI
+			write(2,'(f19.5)') X(ii)
+		enddo		
+		!--------------------------------------------
+		close(2)
+	end subroutine
+
+	subroutine read_mass_one_hdd(X, consNamePart, NI, i) ! тут создаются части массива, которые сохраняются на жестком диске
+		integer :: NI, i, ii
+		real*8  :: X(NI)
+		character(30) :: fullname, consNamePart, changeNamePart
+
+		write(changeNamePart,'(i3,a4)')i,".txt"
+		fullName = trim(consNamePart)//trim(changeNamePart)
+
+		OPEN(UNIT=2,FILE=fullName,STATUS='UNKNOWN')
+		!------------чтение из файла-------------------
+		do ii=1, NI
+			read(2,'(f19.5)') X(ii)
+		enddo		
+		!--------------------------------------------
+		close(2)
+	end subroutine
+
+	
+	subroutine devide_massive_one(X,Y,NI,DDX) !DDX - количество блоков
+		integer :: NI, i, ii, DDX, N            !N - номер блока от 1 до DDX
+		real*8  :: X(NI), Y(NI/DDX+1,DDX)	    !NI/DDX+2 - ширина блока
+
+		do i=1, DDX
+			do ii=1, NI/DDX+1
+				Y(ii, i) =  X(ii + (NI/DDX)*(i-1))
+			enddo
+		enddo
+
+	end subroutine
+
+	subroutine composite_massive_three(X, buff, NI, NJ, NK, DDX, DDY, DDZ, N) !N - состоящий из номеров для конкретной части массива DDX, DDY, DDZ
+		integer :: NI,NJ,NK,i, j, k, ii, jj, kk, DDX, DDY, DDZ
+		real*8  :: X(NI*NJ*NK), Y((NI/DDX+1)*(NJ/DDY+1)*(NK/DDZ+1), DDX*DDY*DDZ)
+		
+		do ii=1, NI/DDX+1
+			do jj=1, NJ/DDY+1
+				do kk=1, NK/DDZ+1
+					X((ii + (NI/DDX)*(i-1)) + (ii + (NJ/DDY)*(i-1))*(NI) +(ii + (NK/DDZ)*(i-1))*NI*NJ) = &
+					buff(ii+(jj-1)*(NI/DDX+1)+(kk-1)*(NI/DDX+1)*(NJ/DDY+1))
+				enddo
+			enddo
+		enddo	
+
+	end subroutine
+
+	!TODO: НЕ ПРАВИЛЬНАЯ ПРОЦЕДУРА - НУЖНО СДЕЛАТЬ
+	subroutine devide_massive_three(X, Y, NI, NJ, NK, DDX, DDY, DDZ)
+		integer :: NI,NJ,NK,i, j, k, ii, jj, kk, DDX, DDY, DDZ
+		real*8  :: X(NI*NJ*NK), Y((NI/DDX+1)*(NJ/DDY+1)*(NK/DDZ+1), DDX*DDY*DDZ)
+		
+		do i=1, DDX
+			do j=1, DDY
+				do k=1, DDZ
+					
+					do ii=1, NI/DDX+1
+						do jj=1, NJ/DDY+1
+							do kk=1, NK/DDZ+1
+								Y(ii+(jj-1)*(NI/DDX+1)+(kk-1)*(NI/DDX+1)*(NJ/DDY+1), i+(j-1)*DDX+(k-1)*DDX*DDY) = &
+								X((ii + (NI/DDX)*(i-1)) + (ii + (NJ/DDY)*(i-1))*(NI) +(ii + (NK/DDZ)*(i-1))*NI*NJ)
+							enddo
+						enddo
+					enddo
+
+				enddo
+			enddo
+		enddo
+
+	end subroutine
+
+end module div_arr

@@ -1,0 +1,29 @@
+﻿module gpu_kernels
+	use cudafor
+
+	contains
+
+	attributes(global) subroutine check_duble_multiplication(X,Y,Z,N)
+		real*8, device :: X(N),Z(N,N),Y(N)
+		integer, device :: N
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+
+		if((i <= N).and.(j <= N)) Z(i,j) = X(i)+Y(j)
+
+	end subroutine
+
+	attributes(global) subroutine check_tripple_multiplication(X, Y, Z, MUL, N)
+		real*8, device :: X(N),Z(N),Y(N),MUL(N,N,N)
+		integer, device :: N
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+
+		if((i <= N).and.(j <= N).and.(k <= N)) MUL(i,j,k) = 0.
+		if((i <= N).and.(j <= N).and.(k <= N)) MUL(i,j,k) = X(i)+Y(j)+Z(k)
+
+	end subroutine
+end module
+	

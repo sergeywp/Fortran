@@ -1,0 +1,71 @@
+﻿module gpu_kernels
+	use cudafor
+
+	contains
+
+	!Не работает
+	!Проверка нескольких действий над одними и те ми же данными
+	attributes(global) subroutine gpu_add(A,B,C,N)
+		real(4), device :: A(N), B(N), C(N)
+		integer, value :: N
+		integer :: i
+		i = (blockidx%x-1)*32+threadidx%x
+		if(i<=N)  C(i) = A(i) + B(i)
+	end subroutine
+
+	!Роботает
+	!Проверка сделать несколько действий над данными на девайсе за несколько операций
+	attributes(global) subroutine gpu_add_stepOne(A,B,C,N)
+		real*8, device :: A(N), B(N), C(N)
+		integer, value :: N
+		integer :: i
+		i = (blockidx%x-1)*32+threadidx%x
+		if(i<=N)  C(i) = A(i) + B(i)
+	end subroutine
+
+	attributes(global) subroutine gpu_add_stepTwo(A,B,C,N)
+		real*8, device :: A(N), B(N), C(N)
+		integer, value :: N
+		integer :: i
+		i = (blockidx%x-1)*32+threadidx%x
+		if(i<=N)  C(i) = C(i) + B(i) + A(i)
+	end subroutine
+
+
+	!Работает
+	!Проверка работы с двумя разными данными одновременно - вроде работает
+	attributes(global) subroutine gpu_duble_add(A,B,C,A1,B1,C1,N)
+		real(4), device :: A(N), B(N), C(N), A1(N), B1(N), C1(N)
+		integer, value :: N
+		integer :: i
+		i = (blockidx%x-1)*32+threadidx%x
+		if(i<=N)  C(i) = A(i) + B(i)
+		if((i>N).and.(i<=N*2)) C1(i-N) = A1(i-N) + B1(i-N)
+	end subroutine
+
+	!Работает
+	!Проверка, как можно сделать составное условие и вычисление условия на девайсе
+	attributes(global) subroutine gpu_add_sostUsl(A,B,C,N)
+		real*8, device :: A(N), B(N), C(N)
+		integer, value :: N
+		integer :: i
+		i = (blockidx%x-1)*32+threadidx%x
+		C(i)=0
+		if((i<=N/2).and.(i>2))  C(i) = B(i) + A(i)+i
+		if(MOD(i,2).EQ.0)  C(i) = B(i) + A(i)*5+i
+	end subroutine
+
+	!Проверка присвоения на девайсе
+	attributes(global) subroutine gpu_add_Prisv(A,B,C,N)
+		real*8, device :: A(N), B(N), C(N)
+		integer, value :: N
+		integer :: i
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		C(i)=0
+		if(i<=N)  B(i) = B(i)*10 + 50
+		if((i>N).and.(i<=N+N))  C(i-N) = 20*10
+		if((i>N+N).and.(i<=N+N+N)) A(i-N-N) =A(i-N-N)*10+ 30+DBLE(N)
+			
+	end subroutine
+
+	end module

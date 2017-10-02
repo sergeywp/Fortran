@@ -1,0 +1,601 @@
+﻿module gpu_kernels
+	use cudafor
+
+	contains
+	
+	attributes(global) subroutine grid_device(XU, YV, ZW, L1, M1, N1, N_MIN, DX, DY, DZ)
+		integer, device :: L1, M1, N1
+		real*8, device :: XU(L1),YV(M1),ZW(N1)
+		real*8, device :: DX, DY, DZ
+		integer, value ::  N_MIN
+		integer :: i
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+
+		if((i>=N_MIN-1).AND.(i<=L1)) XU(i) = 0.
+		if((i>=N_MIN).AND.(i<=L1)) XU(I) = XU(I)+DX*(I-N_MIN)
+		if((i>=L1+N_MIN-1).AND.(i<=M1+L1)) YV(i-L1) = 0.
+		if((I>=L1+N_MIN).AND.(I<=M1+L1)) YV(I-L1) = YV(I-L1)+DY*(I-N_MIN-L1)
+		if((i>=L1+M1+N_MIN-1).AND.(i<=L1+M1+N1)) ZW(i-L1-M1) = 0.
+		if((I>=L1+M1+N_MIN).AND.(I<=L1+M1+N1)) ZW(I-L1-M1) = ZW(I-L1-M1)+DZ*(I-N_MIN-L1-M1)
+
+	END SUBROUTINE
+
+	attributes(global) subroutine XL_computing(DX,DY,DZ,XL,YL,ZL,L1,M1,N1,L2,M2,N2,L3,M3,N3)
+		real*8, device :: XL, YL, ZL
+		real*8, device :: DX, DY, DZ
+		integer, device :: L1, M1, N1, L2, M2, N2, L3, M3, N3
+		real*8, parameter :: pi=3.1415926535897932384626433832795
+		integer :: i
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		if(i == 1) XL=2.*pi
+		if(i == 2) YL=2.*pi
+		if(i == 3) ZL=2.*pi
+		if(i == 4) L1=22
+		if(i == 5) M1=22
+		if(i == 6) N1=22
+
+		call syncthreads()
+
+		if(i == 1) DX = XL/DBLE(L1-2)
+		if(i == 2) DY = YL/DBLE(M1-2)
+		if(i == 3) DZ = ZL/DBLE(N1-2)
+		
+		call syncthreads()
+
+		if(i == 1) L2 = L1-1 
+		if(i == 2) M2 = M1-1
+		if(i == 3) N2 = N1-1
+		if(i == 4) L3 = L1-2 
+		if(i == 5) M3 = M1-2
+		if(i == 6) N3 = N1-2
+	
+
+	end subroutine
+
+	attributes(global) subroutine pre_Setup1_X(X,XU,L1,L2, Y,YV,M1,M2, Z,ZW,N1,N2)
+		integer, device :: L1,L2,M1,M2,N1,N2
+		real*8, device :: XU(NI),YV(NJ),ZW(NK),X(NI),Y(NJ),Z(NK)
+		integer :: i
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		if((i >= 1).AND.(i <= L1)) X(i) = 0
+		if(i == 1)                 X(i) = XU(i+1)
+		if((i > 1).AND.(i <= L2))  X(i) = 0.5*(XU(i+1)+XU(i))
+		if(i == L1)                X(i) = XU(i)
+
+		if((i >= L1+1).AND.(i <= L1+M1)) Y(i-L1) = 0
+		if(i == L1+1)                    Y(i-L1) = YV(i-L1+1)
+		if((i > L1+1).AND.(i <= L1+M2))  Y(i-L1) = 0.5*(YV(i-L1+1)+YV(i-L1))
+		if(i == L1+M1)                   Y(i-L1) = YV(i-L1)
+
+		if((i >= L1+M1+1).AND.(i <= L1+M1+N1)) Z(i-L1-M1) = 0
+		if(i == L1+M1+1)                       Z(i-L1-M1) = ZW(i-L1-M1+1)
+		if((i > L1+M1+1).AND.(i <= L1+M1+N2))  Z(i-L1-M1) = 0.5*(ZW(i-L1-M1+1)+ZW(i-L1-M1))
+		if(i == L1+M1+N1)                      Z(i-L1-M1) = ZW(i-L1-M1)
+
+	end subroutine
+
+	attributes(global) subroutine pre_Setup1_XDIF_XCV(X,XU,XDIF,XCV,L1,L2, Y,YV,YDIF,YCV,M1,M2, Z,ZW,ZDIF,ZCV,N1,N2)
+		integer, device :: L1,L2,M1,M2,N1,N2
+		real*8, device :: XU(NI),YV(NJ),ZW(NK),X(NI),Y(NJ),Z(NK),XDIF(NI),YDIF(NJ),ZDIF(NK),XCV(NI),YCV(NJ),ZCV(NK)
+		integer :: i
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+				
+		if((i >= 1).AND.(i <= L1)) XDIF(I) = 0.
+		if((i >= 2).AND.(i <= L1)) XDIF(I) = X(I)-X(I-1)
+				
+		if((i >= L1 + 1).AND.(i <= L1+L2+1)) XCV(I-L1) = 0.
+		if((i >= L1 + 2).AND.(i <= L1+L2))   XCV(I-L1) = XU(I-L1+1)-XU(I-L1)
+		
+		if((i >= L1+L2+1).AND.(i <= L1+L2+M1))  YDIF(I-L1-L2) = 0.
+		if((i >= L1+L2+2).AND.(i <= L1+L2+M1))	YDIF(I-L1-L2) = Y(I-L1-L2)-Y(I-L1-L2-1)
+		
+		if((i >= L1+L2+M1+1).AND.(i <= L1+L2+M1+M2+1)) YCV(I-L1-L2-M1) = 0. 
+		if((i >= L1+L2+M1+2).AND.(i <= L1+L2+M1+M2))   YCV(I-L1-L2-M1) = YV(I-L1-L2-M1+1)-YV(I-L1-L2-M1) 
+
+		if ((i >= L1+L2+M1+M2+1).AND.(i <= L1+L2+M1+M2+N1)) ZDIF(I-L1-L2-M1-M2) = 0.
+		if ((i >= L1+L2+M1+M2+2).AND.(i <= L1+L2+M1+M2+N1)) ZDIF(I-L1-L2-M1-M2) = Z(I-L1-L2-M1-M2)-Z(I-L1-L2-M1-M2-1)
+
+		if((i >= L1+L2+M1+M2+N1+1).AND.(i <= L1+L2+M1+M2+N1+N2+1)) ZCV(I-L1-L2-M1-M2-N1) = 0.
+		if((i >= L1+L2+M1+M2+N1+2).AND.(i <= L1+L2+M1+M2+N1+N2))   ZCV(I-L1-L2-M1-M2-N1) = ZW(I-L1-L2-M1-M2-N1+1)-ZW(I-L1-L2-M1-M2-N1)
+
+	end subroutine
+
+	!метод расчитан на работу с одномерными массивами
+	attributes(global) subroutine pre_Setup1_VCV_1dim(XCV,YCV,ZCV,L2,N2,M2,VCV,NI,NJ,NK)
+		integer, device :: L2,M2,N2,NI,NJ,NK
+		real*8, device :: XCV(NI),YCV(NJ),ZCV(NK),VCV(NI*NJ*NK)
+		integer :: i
+	
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+
+		!	X(i,1) = MOD((i-1),NI)+1               !i
+		!	X(i,2) = MOD(INT((i-1)/NI),NJ)+1       !j
+		!	X(i,3) = INT((i-1)/(NJ*NI))+1          !k
+
+		if((i>=1).and.(i<=NI*NJ*NK)) VCV(i) = 0.
+		if((i>=1).and.(i<=NI*NJ*NK)) VCV(i) = XCV(MOD((i-1),NI)+1)*YCV(MOD(INT((i-1)/NI),NJ)+1)*ZCV(INT((i-1)/(NJ*NI))+1)
+	
+	end subroutine
+
+	attributes(global) subroutine pre_Setup1_VCV(XCV,YCV,ZCV,L2,N2,M2,VCV)
+		integer, device :: L2,M2,N2
+		real*8, device :: XCV(NI),YCV(NJ),ZCV(NK),VCV(NI,NJ,NK)
+	
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+	
+		if((i>=1).and.(i<=L2).and.(j>=1).and.(j<=M2).and.(k>=1).and.(k<=N2)) VCV(i,j,k) = 0.
+		if((i>=2).and.(i<=L2).and.(j>=2).and.(j<=M2).and.(k>=2).and.(k<=N2)) VCV(i,j,k) = XCV(i)*YCV(j)*ZCV(k)
+		
+	end subroutine
+	
+	!метод расчитан на работу с одномерными массивами
+	attributes(global) subroutine pre_Setup1_SC_SP_RHO_1dim(SC,SP,RHO,L1,N1,M1,NI,NJ,NK)
+		integer, device :: L1,M1,N1,NI,NJ,NK
+		real*8, device :: SC(NI*NJ*NK),SP(NI*NJ*NK),RHO(NI*NJ*NK)
+		integer :: i
+		
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		if((i>=1).and.(i<=NI*NJ*NK)) SC(i) = 0.
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2)) SP(i-NI*NJ*NK) = 0.
+		if((i>=NI*NJ*NK*2+1).and.(i<=NI*NJ*NK*3)) RHO(i-NI*NJ*NK*2) = 1.
+
+	end subroutine
+
+	attributes(global) subroutine pre_Setup1_SC_SP_RHO(SC,SP,RHO,L1,N1,M1)
+		integer, device :: L1,M1,N1
+		real*8, device :: SC(NI,NJ,NK),SP(NI,NJ,NK),RHO(NI,NJ,NK)
+		
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+		
+		if((i>=2).and.(i<=L1).and.(j>=2).and.(j<=M1).and.(k>=2).and.(k<=N1)) SC(i,j,k) = 0.
+		if((i>=L1+2).and.(i<=L1*2).and.(j>=M1+2).and.(j<=M1*2).and.(k>=N1+2).and.(k<=N1*2)) SP(i,j,k) = 0.
+		if((i>=L1*2+2).and.(i<=L1*3).and.(j>=M1*2+2).and.(j<=M1*3).and.(k>=N1*2+2).and.(k<=N1*3)) RHO(i,j,k) = 1.
+
+	end subroutine
+	
+	attributes(global) subroutine start_on(F,L1,N1,M1)
+		integer, device :: L1,M1,N1
+		real*8, device :: F(NI,NJ,NK)
+			
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+		
+		if((i>=1).and.(i<=L1).and.(j>=1).and.(j<=M1).and.(k>=1).and.(k<=N1)) F(I,J,K)=0.
+		
+	end subroutine
+	
+	!метод рассчитан на работу соднмоерными массивами
+	attributes(global) subroutine start_on_1dim(F,NI,NJ,NK)
+		integer, device :: L1,M1,N1,NI,NJ,NK
+		real*8, device :: F(NI*NJ*NK)
+		integer :: i
+			
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		if((i>=1).and.(i<=NI*NJ*NK)) F(i)=0.
+		
+	end subroutine
+	
+	attributes(global) subroutine gamsor_gamx_sc(XU,YV,ZW,SC,GAMI,GAMJ,GAMK,L1,N1,M1,L2,N2,M2)
+		integer, device :: L1,M1,N1,L2,M2,N2
+		real*8, device :: GAMI(NI,NJ,NK), GAMJ(NI,NJ,NK), GAMK(NI,NJ,NK), SC(NI,NJ,NK), XU(NI),YV(NJ),ZW(NK)
+						
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+		
+		if((i>=1).and.(i<=L1).and.(j>=1).and.(j<=M1).and.(k>=1).and.(k<=N1)) GAMI(I,J,K)=1.
+		if((i>=L1+1).and.(i<=L1*2).and.(j>=M1+1).and.(j<=M1*2).and.(k>=N1+1).and.(k<=N1*2)) GAMJ(I,J,K)=1.
+		if((i>=L1*2+1).and.(i<=L1*3).and.(j>=M1*2+1).and.(j<=M1*3).and.(k>=N1*2+1).and.(k<=N1*3)) GAMK(I,J,K)=1.
+		if((i>=L1*3+2).and.(i<=L1*3+L2).and.(j>=M1*3+2).and.(j<=M1*3+M2).and.(k>=N1*3+2).and.(k<=N1*3+N2)) SC(I,J,K)=3.*(DCOS(XU(I))-DCOS(XU(I+1)))* &
+                          (DCOS(YV(J))-DCOS(YV(J+1)))* &   
+                         (DCOS(ZW(K))-DCOS(ZW(K+1)))
+	end subroutine
+
+	!Метод рассичитан на работу с одномерными массивами
+	attributes(global) subroutine gamsor_gamx_sc_1dim(XU,YV,ZW,SC,GAMI,GAMJ,GAMK,L1,N1,M1,L2,N2,M2,NI,NJ,NK)
+		integer, device :: L1,M1,N1,L2,M2,N2,NI,NJ,NK
+		real*8, device :: GAMI(NI*NJ*NK), GAMJ(NI*NJ*NK), GAMK(NI*NJ*NK), SC(NI*NJ*NK), XU(NI),YV(NJ),ZW(NK)
+		integer :: i
+						
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+				
+		if((i>=1).and.(i<=NI*NJ*NK)) GAMI(i)=1.
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2)) GAMJ(i-NI*NJ*NK)=1.
+		if((i>=NI*NJ*NK*2+1).and.(i<=NI*NJ*NK*3)) GAMK(i-NI*NJ*NK*2)=1.
+		
+		if((i>=NI*NJ*NK*3+1).and.(i<=NI*NJ*NK*4).and.(((MOD((i-NI*NJ*NK*3-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK*3-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1).NE.NK )))&
+
+		!--------------------------------------------------------------------------------------------------------------------------
+		!  TODO: ВЫРАЖЕНИЕ НИЖЕ - ИСТОЧНИК ОШИБКИ, СОДАВАЕМОЙ, В ВЫЧИСЛЕНИИ НА GPU !!!
+		!--------------------------------------------------------------------------------------------------------------------------
+		SC(MOD((i-NI*NJ*NK*3-1),NI)+1 + (MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1-1)*NI + (INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1-1)*NI*NJ)=&
+		3.*                 (DCOS(XU( MOD((i-NI*NJ*NK*3-1),NI)+1         ))-DCOS(XU( MOD((i-NI*NJ*NK*3-1),NI)+1+1 )))* &
+                            (DCOS(YV( MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1 ))-DCOS(YV( MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1+1 )))* &   
+                            (DCOS(ZW( INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1    ))-DCOS(ZW( INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1+1 )))
+	end subroutine
+
+	attributes(global) subroutine reset_cu(CON,AP,L2,M2,N2)
+		integer, device :: L2,M2,N2
+		real*8, device :: CON(NI,NJ,NK), AP(NI,NJ,NK)
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+
+		if((i>=2).and.(i<=L2).and.(j>=2).and.(j<=M2).and.(k>=2).and.(k<=N2)) CON(I,J,K) = 0.
+		if((i>=L2+2).and.(i<=L2*2).and.(j>=M2+2).and.(j<=M2*2).and.(k>=N2+2).and.(k<=N2*2)) AP(I,J,K) = 0.
+
+	end subroutine
+	
+	!Метод рассичитан на работу с одномерными массивами
+	attributes(global) subroutine reset_cu_1dim(CON,AP,L2,M2,N2,NI,NJ,NK)
+		integer, device :: L2,M2,N2,NI,NJ,NK
+		real*8, device :: CON(NI*NJ*NK), AP(NI*NJ*NK)
+		integer :: i
+	
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		if((i>=1).and.(i<=NI*NJ*NK)) CON(i)=0.
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2)) AP(i-NI*NJ*NK)=0.
+	end subroutine
+	
+	attributes(global) subroutine setup2_axm_axp_ap0(AIM,AIP,AJM,AJP,AKM,AKP,GAMI,GAMJ,GAMK,XCV,YCV,ZCV,XDIF,YDIF,ZDIF,&
+														AP0,RHO,VCV,DT,N2,M2,L2)
+		integer, device :: L2,M2,N2
+		real*8, device :: AIM(NI,NJ,NK),AIP(NI,NJ,NK),AJM(NI,NJ,NK),AJP(NI,NJ,NK),AKM(NI,NJ,NK),AKP(NI,NJ,NK),&
+						  GAMI(NI,NJ,NK),GAMJ(NI,NJ,NK),GAMK(NI,NJ,NK),XCV(NI),YCV(NJ),ZCV(NK),XDIF(NI),YDIF(NJ),ZDIF(NK),&
+						  AP0(NI,NJ,NK),RHO(NI,NJ,NK),VCV(NI,NJ,NK),DT
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+
+		if((i>=2).and.(i<=L2).and.(j>=2).and.(j<=M2).and.(k>=2).and.(k<=N2)) AIM(I,J,K) = GAMI(I,J,K)*YCV(J)*ZCV(K)/XDIF(I)            
+		if((i>=L2+2).and.(i<=L2*2).and.(j>=M2+2).and.(j<=M2*2).and.(k>=N2+2).and.(k<=N2*2)) AIP(I,J,K) = GAMI(I+1,J,K)*YCV(J)*ZCV(K)/XDIF(I+1)
+		if((i>=L2*2+2).and.(i<=L2*3).and.(j>=M2*2+2).and.(j<=M2*3).and.(k>=N2*2+2).and.(k<=N2*3)) AJM(I,J,K) = GAMJ(I,J,K)*XCV(I)*ZCV(K)/YDIF(J)
+		if((i>=L2*3+2).and.(i<=L2*4).and.(j>=M2*3+2).and.(j<=M2*4).and.(k>=N2*3+2).and.(k<=N2*4)) AJP(I,J,K) = GAMJ(I,J+1,K)*XCV(I)*ZCV(K)/YDIF(J+1)
+		if((i>=L2*4+2).and.(i<=L2*5).and.(j>=M2*4+2).and.(j<=M2*5).and.(k>=N2*4+2).and.(k<=N2*5)) AKM(I,J,K) = GAMK(I,J,K)*XCV(I)*YCV(J)/ZDIF(K)
+		if((i>=L2*5+2).and.(i<=L2*6).and.(j>=M2*5+2).and.(j<=M2*6).and.(k>=N2*5+2).and.(k<=N2*6)) AKP(I,J,K) = GAMK(I,J,K+1)*XCV(I)*YCV(J)/ZDIF(K+1)
+		if((i>=L2*6+2).and.(i<=L2*7).and.(j>=M2*6+2).and.(j<=M2*7).and.(k>=N2*6+2).and.(k<=N2*7)) AP0(I,J,K) = RHO(I,J,K)*VCV(I,J,K)/DT
+
+	end subroutine
+
+	!Метод рассичитан на работу с одномерными массивами
+	attributes(global) subroutine setup2_axm_axp_ap0_1dim(AIM,AIP,AJM,AJP,AKM,AKP,GAMI,GAMJ,GAMK,XCV,YCV,ZCV,XDIF,YDIF,ZDIF,&
+														AP0,RHO,VCV,DT,N2,M2,L2,NI,NJ,NK)
+		integer, device :: L2,M2,N2,NI,NJ,NK
+		real*8, device :: AIM(NI*NJ*NK),AIP(NI*NJ*NK),AJM(NI*NJ*NK),AJP(NI*NJ*NK),AKM(NI*NJ*NK),AKP(NI*NJ*NK),&
+						  GAMI(NI*NJ*NK),GAMJ(NI*NJ*NK),GAMK(NI*NJ*NK),XCV(NI),YCV(NJ),ZCV(NK),XDIF(NI),YDIF(NJ),ZDIF(NK),&
+						  AP0(NI*NJ*NK),RHO(NI*NJ*NK),VCV(NI*NJ*NK),DT
+		integer :: i
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+
+		if((i>=1).and.(i<=NI*NJ*NK).and.(((MOD((i-1),NI)+1)==1 ).or.((MOD((i-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-1)/NI),NJ)+1)==NJ ).or.((INT((i-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-1)/(NJ*NI))+1)==NK )))AIM(I) = 0.
+		if((i>=1).and.(i<=NI*NJ*NK).and.(((MOD((i-1),NI)+1).NE.1 ).and.((MOD((i-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-1)/(NJ*NI))+1).NE.NK )))&    
+		AIM(I) = GAMI(I)*YCV( MOD(INT((i-1)/NJ),NK)+1 )*ZCV( INT((i-1)/(NJ*NK))+1 )/XDIF( MOD((i-1),NJ)+1 ) 
+		
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2).and.(((MOD((i-NI*NJ*NK-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK-1)/(NJ*NI))+1)==NK )))AIP(I-NI*NJ*NK) = 0.
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2).and.(((MOD((i-NI*NJ*NK-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK-1)/(NJ*NI))+1).NE.NK )))&  
+		AIP(I-NI*NJ*NK) = GAMI(I-NI*NJ*NK+1)*YCV( MOD(INT((i-NI*NJ*NK-1)/NJ),NK)+1 )*ZCV( INT((i-NI*NJ*NK-1)/(NJ*NK))+1 )/XDIF( MOD((i-NI*NJ*NK-1),NJ)+1+1 )     
+		
+		if((i>=NI*NJ*NK*2+1).and.(i<=NI*NJ*NK*3).and.(((MOD((i-NI*NJ*NK*2-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK*2-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK*2-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-NI*NJ*NK*2-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK*2-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK*2-1)/(NJ*NI))+1)==NK ))) AJM(I-NI*NJ*NK*2) = 0.
+		if((i>=NI*NJ*NK*2+1).and.(i<=NI*NJ*NK*3).and.(((MOD((i-NI*NJ*NK*2-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK*2-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK*2-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK*2-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK*2-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK*2-1)/(NJ*NI))+1).NE.NK )))&  
+		AJM(I-NI*NJ*NK*2) = GAMJ(I-NI*NJ*NK*2+1)*XCV( MOD((i-NI*NJ*NK*2-1),NJ)+1 )*ZCV( INT((i-NI*NJ*NK*2-1)/(NJ*NK))+1 )/YDIF( MOD(INT((i-NI*NJ*NK*2-1)/NJ),NK)+1 )
+
+		if((i>=NI*NJ*NK*3+1).and.(i<=NI*NJ*NK*4).and.(((MOD((i-NI*NJ*NK*3-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK*3-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1)==NK ))) AJP(I-NI*NJ*NK*3) = 0.
+		if((i>=NI*NJ*NK*3+1).and.(i<=NI*NJ*NK*4).and.(((MOD((i-NI*NJ*NK*3-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK*3-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK*3-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK*3-1)/(NJ*NI))+1).NE.NK )))&
+		AJP(I-NI*NJ*NK*3) = GAMJ(I-NI*NJ*NK*3+1*NI)*XCV( MOD((i-NI*NJ*NK*3-1),NJ)+1 )*ZCV( INT((i-NI*NJ*NK*3-1)/(NJ*NK))+1 )/YDIF( MOD(INT((i-NI*NJ*NK*3-1)/NJ),NK)+1+1 )     
+		
+		if((i>=NI*NJ*NK*4+1).and.(i<=NI*NJ*NK*5).and.(((MOD((i-NI*NJ*NK*4-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK*4-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK*4-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-NI*NJ*NK*4-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK*4-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK*4-1)/(NJ*NI))+1)==NK ))) AKM(I-NI*NJ*NK*4) = 0.
+		if((i>=NI*NJ*NK*4+1).and.(i<=NI*NJ*NK*5).and.(((MOD((i-NI*NJ*NK*4-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK*4-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK*4-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK*4-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK*4-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK*4-1)/(NJ*NI))+1).NE.NK )))&
+		AKM(I-NI*NJ*NK*4) = GAMK(I-NI*NJ*NK*4+1)*XCV( MOD((i-NI*NJ*NK*4-1),NJ)+1 )*YCV( MOD(INT((i-NI*NJ*NK*4-1)/NJ),NK)+1 )/ZDIF( INT((i-NI*NJ*NK*4-1)/(NJ*NK))+1 )
+
+		if((i>=NI*NJ*NK*5+1).and.(i<=NI*NJ*NK*6).and.(((MOD((i-NI*NJ*NK*5-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK*5-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK*5-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-NI*NJ*NK*5-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK*5-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK*5-1)/(NJ*NI))+1)==NK ))) AKP(I-NI*NJ*NK*5) = 0.
+		if((i>=NI*NJ*NK*5+1).and.(i<=NI*NJ*NK*6).and.(((MOD((i-NI*NJ*NK*5-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK*5-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK*5-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK*5-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK*5-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK*5-1)/(NJ*NI))+1).NE.NK )))&
+		AKP(I-NI*NJ*NK*5) = GAMK(I-NI*NJ*NK*5+1*NI*NJ)*XCV( MOD((i-NI*NJ*NK*5-1),NJ)+1 )*XCV( MOD(INT((i-NI*NJ*NK*5-1)/NJ),NK)+1 )/ZDIF( INT((i-NI*NJ*NK*5-1)/(NJ*NK))+1+1 )     
+		
+		if((i>=NI*NJ*NK*6+1).and.(i<=NI*NJ*NK*7).and.(((MOD((i-NI*NJ*NK*-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK*6-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK*6-1)/NI),NJ)+1)==1 ).or.((MOD(INT((i-NI*NJ*NK*6-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK*6-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK*6-1)/(NJ*NI))+1)==NK ))) AP0(I-NI*NJ*NK*6) = 0.
+		if((i>=NI*NJ*NK*6+1).and.(i<=NI*NJ*NK*7).and.(((MOD((i-NI*NJ*NK*6-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK*6-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK*6-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK*6-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK*6-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK*6-1)/(NJ*NI))+1).NE.NK )))&
+		AP0(I-NI*NJ*NK*6) = RHO(I-NI*NJ*NK*6)*VCV( I-NI*NJ*NK*6 )/DT
+		
+	end subroutine
+		
+	attributes(global) subroutine setup2_con_ap_1dim(CON,AP,SC,AP0,SP,F,AIM,AIP,AJM,AJP,AKM,AKP,N2,M2,L2,NI,NJ,NK)
+		integer, device :: L2,M2,N2,NI,NJ,NK
+		real*8, device :: CON(NI*NJ*NK), AP(NI*NJ*NK), SC(NI*NJ*NK),SP(NI*NJ*NK),AP0(NI*NJ*NK),F(NI*NJ*NK),&
+						  AIM(NI*NJ*NK),AIP(NI*NJ*NK),AJM(NI*NJ*NK),AJP(NI*NJ*NK),AKM(NI*NJ*NK),AKP(NI*NJ*NK)
+						  
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+
+		if((i>=1).and.(i<=NI*NJ*NK).and.(((MOD((i-1),NI)+1)==1 ).or.((MOD((i-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-1)/NI),NJ)+1).NE.1 ).or.((MOD(INT((i-1)/NI),NJ)+1)==NJ ).or.((INT((i-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-1)/(NJ*NI))+1)==NK )))CON(I) = 0.
+		if((i>=1).and.(i<=NI*NJ*NK).and.(((MOD((i-1),NI)+1).NE.1 ).and.((MOD((i-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-1)/(NJ*NI))+1).NE.NK ))) &
+		CON(I) = SC(I)+AP0(I)*F(I)
+
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2).and.(((MOD((i-NI*NJ*NK-1),NI)+1)==1 ).or.((MOD((i-NI*NJ*NK-1),NI)+1)==NI ).or.&
+		((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1).NE.1 ).or.((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1)==NJ ).or.((INT((i-NI*NJ*NK-1)/(NJ*NI))+1)==1 ).or.&
+		((INT((i-NI*NJ*NK-1)/(NJ*NI))+1)==NK ))) AP(I-NI*NJ*NK) = 0.		
+		if((i>=NI*NJ*NK+1).and.(i<=NI*NJ*NK*2).and.(((MOD((i-NI*NJ*NK-1),NI)+1).NE.1 ).and.((MOD((i-NI*NJ*NK-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-NI*NJ*NK-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-NI*NJ*NK-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-NI*NJ*NK-1)/(NJ*NI))+1).NE.NK )))&
+		AP(I-NI*NJ*NK) = -SP(I-NI*NJ*NK)+AP0(I-NI*NJ*NK)+AIM(I-NI*NJ*NK)+AIP(I-NI*NJ*NK)+AJM(I-NI*NJ*NK)+AJP(I-NI*NJ*NK)+AKM(I-NI*NJ*NK)+AKP(I-NI*NJ*NK)    
+		
+	end subroutine
+
+	attributes(global) subroutine setup2_con_ap(CON,AP,SC,AP0,SP,F,AIM,AIP,AJM,AJP,AKM,AKP,N2,M2,L2)
+		integer, device :: L2,M2,N2
+		real*8, device :: CON(NI,NJ,NK), AP(NI,NJ,NK), SC(NI,NJ,NK),SP(NI,NJ,NK),AP0(NI,NJ,NK),F(NI,NJ,NK),&
+						  AIM(NI,NJ,NK),AIP(NI,NJ,NK),AJM(NI,NJ,NK),AJP(NI,NJ,NK),AKM(NI,NJ,NK),AKP(NI,NJ,NK)
+						  
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		j = (blockidx%y-1) * blockdim%y + threadidx%y
+		k = (blockidx%z-1) * blockdim%z + threadidx%z
+
+		if((i>=2).and.(i<=L2).and.(j>=2).and.(j<=M2).and.(k>=2).and.(k<=N2)) CON(I,J,K) = SC(I,J,K)+AP0(I,J,K)*F(I,J,K)
+		if((i>=L2+2).and.(i<=L2*2).and.(j>=M2+2).and.(j<=M2*2).and.(k>=N2+2).and.(k<=N2*2)) AP(I,J,K) = -SP(I,J,K)+AP0(I,J,K)+AIM(I,J,K)+&
+																							AIP(I,J,K)+AJM(I,J,K)+AJP(I,J,K)+AKM(I,J,K)+AKP(I,J,K)
+
+	end subroutine
+
+	attributes(global) subroutine setup2_con2_1dim(CON,AP,F,RELAX,NI,NJ,NK)
+		integer, device :: NI,NJ,NK
+		real*8, device :: CON(NI*NJ*NK), AP(NI*NJ*NK), F(NI*NJ*NK), RELAX
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+
+		if((i>=1).and.(i<=NI*NJ*NK).and.(((MOD((i-1),NI)+1).NE.1 ).and.((MOD((i-1),NI)+1).NE.NI ).and.&
+		((MOD(INT((i-1)/NI),NJ)+1).NE.1 ).and.((MOD(INT((i-1)/NI),NJ)+1).NE.NJ ).and.((INT((i-1)/(NJ*NI))+1).NE.1 ).and.&
+		((INT((i-1)/(NJ*NI))+1).NE.NK )))&     
+		CON(I) = CON(I)+(1.0-RELAX)*AP(I)*F(I)
+		
+	end subroutine
+    
+	attributes(global) subroutine solve_1dim_2meth_xdim_2(F,AIP,AIM,AJP,AJM,AKP,AKM,CON,TEMPS,AP,PT,QT,NI,NJ,NK)                     
+		integer, device :: NI,NJ,NK,i,j,k,kk,ii,jj
+		real*8, device :: F(NI*NJ*NK), AIP(NI*NJ*NK), AIM(NI*NJ*NK), AJP(NI*NJ*NK), AJM(NI*NJ*NK), AKP(NI*NJ*NK), AKM(NI*NJ*NK),&
+						  CON(NI*NJ*NK), AP(NI*NJ*NK),TEMPS(NI*NJ*NK), DENOM, PT(NI*NJ*NK), QT(NI*NJ*NK)
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		if((i>=1).and.(i<=NJ*NK)) then
+			PT((MOD(INT(((i-1)*NI-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI-1)/(NI*NJ))+1-1)*NI*NJ+1) = 0.0
+			do ii=2,NI-1
+
+			TEMPS( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ ) =&
+					AJP( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )*&
+						F( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1+1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )+&   !Здесь моросит f
+
+					AJM( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )*&
+						F( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )+&  !И здесь моросит f
+
+					AKP( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )*&
+						F( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1+1)*NI*NJ )+&
+
+					AKM( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )*&
+						F( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1-1)*NI*NJ )+&
+
+					CON( ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ )
+		
+
+				if((ii.NE.1 ).and.(ii.NE.NI ).and.&
+				  ((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1).NE.1 ).and.&
+				  ((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1).NE.NJ ).and.&
+					((INT(((i-1)*NI+ii-1)/(NI*NJ))+1).NE.1 ).and.&
+					((INT(((i-1)*NI+ii-1)/(NI*NJ))+1).NE.NK )) then
+		
+					
+					QT((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ+1) =& 
+					F((INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + 1)
+		
+					DENOM = AP(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)&
+						  - PT(ii-1 + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)&
+						  * AIM(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)
+					
+					QT((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ + ii ) =&
+					 (TEMPS(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)&
+					             +AIM(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)&
+								 *QT((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ + ii-1))/(DENOM+1.D-30)
+					
+					PT( (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ + ii ) &
+					= AIP(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)&
+					                                 /(DENOM+1.D-30)					
+				endif
+			enddo
+		
+			do ii=NI-1,2,-1
+				if((ii.NE.1 ).and.(ii.NE.NI ).and.&
+				  ((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1).NE.1 ).and.&
+				  ((MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1).NE.NJ ).and.&
+					((INT(((i-1)*NI+ii-1)/(NI*NJ))+1).NE.1 ).and.&
+					((INT(((i-1)*NI+ii-1)/(NI*NJ))+1).NE.NK )) then			
+				
+						F(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ) =&
+						F(ii+1 + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1 -1)*NI*NJ) *&
+						                PT(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ) +&
+										QT(ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ)				
+	
+				endif
+			enddo 
+		endif
+	end subroutine
+	
+	attributes(global) subroutine solve_1dim_2meth_ydim_2(F,AIP,AIM,AJP,AJM,AKP,AKM,CON,TEMPS,AP,PT,QT,NI,NJ,NK)                     
+		integer, device :: NI,NJ,NK,i,j,k,kk,ii,jj
+		real*8, device :: F(NI*NJ*NK), AIP(NI*NJ*NK), AIM(NI*NJ*NK), AJP(NI*NJ*NK), AJM(NI*NJ*NK), AKP(NI*NJ*NK), AKM(NI*NJ*NK),&
+						  CON(NI*NJ*NK), AP(NI*NJ*NK),TEMPS(NI*NJ*NK), DENOM, PT(NI*NJ*NK), QT(NI*NJ*NK)
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		call syncthreads()
+
+		if((i>=1).and.(i<=NI*NK)) then
+			PT(MOD((i-1),NI)+1 +(1-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ) = 0.0
+			do ii=2,NJ-1				
+				if(((MOD((i-1),NI)+1).NE.1 ).and.((MOD((i-1),NI)+1).NE.NI ).and.&
+				  (ii.NE.1 ).and.&
+				  (ii.NE.NJ ).and.&
+					((INT((i*NJ-1)/(NI*NJ))+1).NE.1 ).and.&
+					((INT((i*NJ-1)/(NI*NJ))+1).NE.NK )) then
+
+					TEMPS( MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) =&
+					AIP(MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)*&
+						F(  MOD((i-1),NI)+1+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ )+& 
+
+					AIM(MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)*&
+						F( MOD((i-1),NI)+1-1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ  )+& 
+
+					AKP(MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)*&
+						F(  MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1+1-1)*NI*NJ  )+&
+
+					AKM(MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)*&
+						F(  MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1-1)*NI*NJ  )+&
+
+					CON(MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)
+		
+
+
+					QT( MOD((i-1),NI)+1 + (1-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) =& 
+					F( MOD((i-1),NI)+1 + (2-1-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ )
+		
+					DENOM = AP( MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)&
+						  - PT( MOD((i-1),NI)+1 +(ii-1-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)&
+						  * AJM(MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)
+
+					QT( MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) =&
+							   (TEMPS( MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)&
+					             +AJM( MOD((i-1),NI)+1 +(ii-1)*NI   + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ)&
+								 *QT(  MOD((i-1),NI)+1 +(ii-1-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ))/(DENOM+1.D-30)
+					
+					PT( MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) &
+					= AJP( MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ )&
+					                                 /(DENOM+1.D-30)
+					
+				endif
+			enddo
+							
+			do ii=NJ-1,2,-1
+				if(((MOD((i-1),NI)+1).NE.1 ).and.((MOD((i-1),NI)+1).NE.NI ).and.&
+				  (ii.NE.1 ).and.&
+				  (ii.NE.NJ ).and.&
+					((INT((i*NJ-1)/(NI*NJ))+1).NE.1 ).and.&
+					((INT((i*NJ-1)/(NI*NJ))+1).NE.NK )) then
+		
+						F( MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) =&
+						F( MOD((i-1),NI)+1 +(ii+1-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) *&
+						                PT( MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ ) +&
+										QT( MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ )
+
+				endif
+			enddo 
+		endif
+	end subroutine
+
+	attributes(global) subroutine solve_1dim_2meth_zdim_2(F,AIP,AIM,AJP,AJM,AKP,AKM,CON,TEMPS,AP,PT,QT,NI,NJ,NK)                     
+		integer, device :: NI,NJ,NK,i,j,k,kk,ii,jj
+		real*8, device :: F(NI*NJ*NK), AIP(NI*NJ*NK), AIM(NI*NJ*NK), AJP(NI*NJ*NK), AJM(NI*NJ*NK), AKP(NI*NJ*NK), AKM(NI*NJ*NK),&
+						  CON(NI*NJ*NK), AP(NI*NJ*NK),TEMPS(NI*NJ*NK), DENOM, PT(NI*NJ*NK), QT(NI*NJ*NK)
+
+		i = (blockidx%x-1) * blockdim%x + threadidx%x
+		
+		if((i>=1).and.(i<=NI*NJ)) then
+			PT(MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI + (2-1-1)*NI*NJ) = 0.0
+			do ii=2,NK-1
+				if((( MOD((i-1),NI)+1 ).NE.1 ).and.(( MOD((i-1),NI)+1 ).NE.NI ).and.&
+				  (( MOD(INT((i-1)/NI),NJ)+1 ).NE.1 ).and.&
+				  (( MOD(INT((i-1)/NI),NJ)+1 ).NE.NJ ).and.&
+					(ii.NE.1 ).and.&
+					(ii.NE.NK )) then
+
+					TEMPS( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ ) =&
+					AIP( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )*&
+						F( MOD((i-1),NI)+1+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )+& 
+
+					AIM( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )*&
+						F( MOD((i-1),NI)+1-1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )+& 
+
+					AJP( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )*&
+						F( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1+1)*NI   + (ii-1)*NI*NJ  )+&
+
+					AJM( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )*&
+						F( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1-1)*NI   + (ii-1)*NI*NJ )+&
+
+					CON( MOD((i-1),NI)+1 +(MOD(INT((i-1)/NI),NJ)+1-1)*NI   + (ii-1)*NI*NJ )
+		
+		
+					QT( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (2-1-1)*NI*NJ ) =& 
+					F(  MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (2-1-1)*NI*NJ )
+		
+					DENOM = AP( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ )&
+						  - PT( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1-1)*NI*NJ)&
+						  * AKM(MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ )
+
+					QT( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ ) =&
+							   (TEMPS( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ)&
+					             +AKM( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ)&
+								 *QT(  MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1-1)*NI*NJ))/(DENOM+1.D-30)
+					
+					PT( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ ) &
+					= AKP( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ )&
+					                                 /(DENOM+1.D-30)
+				endif
+			enddo
+							
+			do ii=NK-1,2,-1
+				if((( MOD((i-1),NI)+1 ).NE.1 ).and.(( MOD((i-1),NI)+1 ).NE.NI ).and.&
+				  (( MOD(INT((i-1)/NI),NJ)+1 ).NE.1 ).and.&
+				  (( MOD(INT((i-1)/NI),NJ)+1 ).NE.NJ ).and.&
+					(ii.NE.1 ).and.&
+					(ii.NE.NK )) then
+		
+						F( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ ) =&
+						F( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii+1-1)*NI*NJ ) *&
+						                PT( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ ) +&
+										QT( MOD((i-1),NI)+1 + ((MOD(INT((i-1)/NI),NJ)+1)-1)*NI + (ii-1)*NI*NJ )
+				endif
+			enddo 
+		endif
+	end subroutine
+
+end module

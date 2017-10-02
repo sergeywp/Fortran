@@ -1,0 +1,156 @@
+﻿program main
+
+use gpu_kernels
+
+implicit none
+	integer i;
+	integer, parameter ::blockSize = 32
+
+	real*8, parameter :: pi_d=3.1415926535897932384626433832795
+	integer :: L1_h=22, M1_h=22, N1_h=22, NI_cu=22, NJ_cu=22, NK_cu=22, N_MIN=3, N_MIN_GRID=2
+	real*8, device :: DX_d, DY_d, DZ_d, DT_d, RELAX_d
+	real*8, device :: XL_d, YL_d, ZL_d
+	integer, device :: L1_d, L2_d, M1_d, M2_d, N1_d, N2_d, L3_d, M3_d, N3_d
+	real*8, device, allocatable :: X_d(:),Y_d(:),Z_d(:),XU_d(:),YV_d(:),ZW_d(:),&
+	                               XDIF_d(:),YDIF_d(:),ZDIF_d(:),XCV_d(:),YCV_d(:),ZCV_d(:)
+	real*8, device, allocatable :: VCV_1d(:),SC_1d(:),SP_1d(:),RHO_1d(:), F_1d(:), AP0_1d(:),&
+	                               GAMI_1d(:), GAMJ_1d(:), GAMK_1d(:), AP_1d(:), CON_1d(:),&
+	                               AIM_1d(:),AIP_1d(:),AJM_1d(:),AJP_1d(:),AKM_1d(:),AKP_1d(:)
+	real*8, device, allocatable :: TEMPS_d(:), PT_d(:), QT_d(:), F_temp_d(:)
+	integer :: i3, j3, k3
+
+	real*8 ::  DT_h=1.E+30	,RELAX_h=1.0
+	real*8, allocatable  :: F_1h(:), X_h(:), Y_h(:), Z_h(:), F1(:)	
+
+	L1_d = L1_h
+	N1_d = N1_h
+	M1_d = M1_h
+	DT_d = DT_h
+	!RELAX_d = RELAX_h
+
+	!==================================================================================
+	!Область выделения памяти для динамических массивов
+	!==================================================================================	
+	write (*,*) "----------Memory Allocating--------------"
+	allocate(   X_d(NI_cu),Y_d(NJ_cu),Z_d(NK_cu),XU_d(NI_cu), YV_d(NJ_cu), ZW_d(NK_cu),&
+	            XDIF_d(NI_cu),YDIF_d(NJ_cu),ZDIF_d(NK_cu),XCV_d(NI_cu),YCV_d(NJ_cu),ZCV_d(NK_cu),&
+				F_1h(NI_cu*NJ_cu*NK_cu),&
+				VCV_1d(NI_cu*NJ_cu*NK_cu),SC_1d(NI_cu*NJ_cu*NK_cu),SP_1d(NI_cu*NJ_cu*NK_cu),RHO_1d(NI_cu*NJ_cu*NK_cu), F_1d(NI_cu*NJ_cu*NK_cu),&
+				AP0_1d(NI_cu*NJ_cu*NK_cu),GAMI_1d(NI_cu*NJ_cu*NK_cu),GAMJ_1d(NI_cu*NJ_cu*NK_cu), GAMK_1d(NI_cu*NJ_cu*NK_cu),&
+				AP_1d(NI_cu*NJ_cu*NK_cu), CON_1d(NI_cu*NJ_cu*NK_cu),AIM_1d(NI_cu*NJ_cu*NK_cu),AIP_1d(NI_cu*NJ_cu*NK_cu),&
+				AJM_1d(NI_cu*NJ_cu*NK_cu),AJP_1d(NI_cu*NJ_cu*NK_cu),AKM_1d(NI_cu*NJ_cu*NK_cu),AKP_1d(NI_cu*NJ_cu*NK_cu),&
+				TEMPS_d(NI_cu*NJ_cu*NK_cu),PT_d(NI_cu*NJ_cu*NK_cu),QT_d(NI_cu*NJ_cu*NK_cu),&
+				X_h(NI_cu), Y_h(NJ_cu), Z_h(NK_cu), F1(NI_cu*NJ_cu*NK_cu))
+				
+	write (*,*) "----------XL_computing--------------"
+	call XL_computing<<<dim3(5/1024+1,1,1), dim3(1024,1,1)>>>(DX_d, DY_d, DZ_d,XL_d, YL_d, ZL_d, L1_d, M1_d, N1_d, L2_d, M2_d, N2_d, L3_d, M3_d, N3_d)
+
+	write (*,*) "----------grid_device--------------"
+	call grid_device<<<dim3((L1_h+M1_h+N1_h)*3/1024+1,1,1), dim3(1024,1,1)>>>(XU_d, YV_d, ZW_d, L1_d, M1_d, N1_d, N_MIN_GRID, DX_d, DY_d, DZ_d)
+
+	write (*,*) "----------pre_Setup1_X--------------"
+	call pre_Setup1_X<<<dim3((L1_h+M1_h+N1_h)*3/1024+1,1,1), dim3(1024,1,1)>>>(X_d,XU_d,L1_d,L2_d, Y_d,YV_d,M1_d,M2_d, Z_d,ZW_d,N1_d,N2_d)
+
+	write (*,*) "----------pre_Setup1_XDIF_XCV--------------"
+	call pre_Setup1_XDIF_XCV<<<dim3(NI_cu*NJ_cu*NK_cu*3/1024+1,1,1), dim3(1024,1,1)>>>(X_d, XU_d, XDIF_d, XCV_d, L1_d, L2_d, Y_d, YV_d, YDIF_d, YCV_d, M1_d, M2_d, Z_d,&
+			 ZW_d, ZDIF_d, ZCV_d, N1_d, N2_d)
+	
+	write (*,*) "----------pre_Setup1_VCV--------------"
+	call pre_Setup1_VCV_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*3/1024+1,1,1), dim3(1024,1,1)>>>(XCV_d,YCV_d,ZCV_d,L2_d,N2_d,M2_d,VCV_1d,L1_d,M1_d,N1_d)
+	
+	write (*,*) "----------pre_Setup1_SC_SP_RHO--------------"
+	call pre_Setup1_SC_SP_RHO_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*9/1024+1,1,1), dim3(1024,1,1)>>>(SC_1d,SP_1d,RHO_1d,L1_d,N1_d,M1_d,L1_d,M1_d,N1_d)
+
+	write (*,*) "----------start_on--------------"
+	call start_on_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*3/1024+1,1,1), dim3(1024,1,1)>>>(F_1d,L1_d,N1_d,M1_d)
+
+
+	write (*,*) "----------reset_cu--------------"
+	call reset_cu_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*2/1024+1,1,1), dim3(1024,1,1)>>>(CON_1d,AP_1d,L2_d,M2_d,N2_d,L1_d,M1_d,N1_d)
+
+	write (*,*) "----------gamsor_gamx_sc--------------"
+	call gamsor_gamx_sc_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*5/1024+1,1,1), dim3(1024,1,1)>>>(XU_d,YV_d,ZW_d,SC_1d,GAMI_1d,GAMJ_1d,GAMK_1d,L1_d,N1_d,M1_d,L2_d,N2_d,M2_d,&
+																												L1_d,M1_d,N1_d)
+	write (*,*) "----------setup2_axm_axp_ap0--------------"
+	call setup2_axm_axp_ap0_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*10/1024+1,1,1), dim3(1024,1,1)>>>(AIM_1d,AIP_1d,AJM_1d,AJP_1d,AKM_1d,&
+																				AKP_1d,GAMI_1d,GAMJ_1d,&
+																				GAMK_1d,XCV_d,YCV_d,ZCV_d,XDIF_d,YDIF_d,ZDIF_d,&
+																				AP0_1d,RHO_1d,VCV_1d,DT_d,N2_d,M2_d,L2_d,L1_d,M1_d,N1_d)
+	
+	write (*,*) "----------setup2_con_ap--------------"
+	call setup2_con_ap_1dim<<<dim3(NI_cu*NJ_cu*NK_cu*2/1024+1,1,1), dim3(1024,1,1)>>>(CON_1d,AP_1d,SC_1d,AP0_1d,SP_1d,F_1d,AIM_1d,AIP_1d,AJM_1d,AJP_1d,&
+																			   AKM_1d,AKP_1d,N2_d,M2_d,L2_d,L1_d,M1_d,N1_d)
+	write(*,*) "----------setup2_con2_1dim--------------"
+	call setup2_con2_1dim<<<dim3(NI_cu*NJ_cu*NK_cu/1024+1,1,1), dim3(1024,1,1)>>>(CON_1d,AP_1d,F_1d,RELAX_d,L1_d,M1_d,N1_d)
+	
+	write(*,*) "----------SOLVE_2--------------"
+	do i=1, 200    
+		call solve_1dim_2meth_xdim_2<<<dim3(NI_cu*NJ_cu*NK_cu/1024+1,1,1), dim3(1024,1,1)>>>(F_1d,AIP_1d,AIM_1d,AJP_1d,AJM_1d,AKP_1d,AKM_1d,CON_1d,TEMPS_d,AP_1d,PT_d,QT_d,L1_d,M1_d,N1_d)
+		call solve_1dim_2meth_ydim_2<<<dim3(NI_cu*NJ_cu*NK_cu/1024+1,1,1), dim3(1024,1,1)>>>(F_1d,AIP_1d,AIM_1d,AJP_1d,AJM_1d,AKP_1d,AKM_1d,CON_1d,TEMPS_d,AP_1d,PT_d,QT_d,L1_d,M1_d,N1_d)
+		call solve_1dim_2meth_zdim_2<<<dim3(NI_cu*NJ_cu*NK_cu/1024+1,1,1), dim3(1024,1,1)>>>(F_1d,AIP_1d,AIM_1d,AJP_1d,AJM_1d,AKP_1d,AKM_1d,CON_1d,TEMPS_d,AP_1d,PT_d,QT_d,L1_d,M1_d,N1_d)
+	enddo
+	write(*,*)"end device"
+	
+	!======================================================================================
+	!ОБЛАСТЬ ПРОВЕРКИ
+
+	write(*,*)"start copy data"
+	F_1h = F_1d
+	x_h = x_d
+	y_h = y_d
+	z_h = Z_d
+	write(*,*)"end copy data"
+	
+	!============================================================
+	!вычисление аналитического решения
+	do k3=1,NI_cu
+		do j3=1,NJ_cu
+			do i3=1,NK_cu
+				   F1(i3+(j3-1)*NK_cu+(k3-1)*NK_cu*NJ_cu) = DSIN(x_h(i3))*DSIN(y_h(j3))*DSIN(z_h(k3))
+			enddo
+		enddo
+	enddo
+	
+   !===========================================================
+   !запись в файл результатов
+   !==============================================================
+   OPEN(UNIT=3,FILE='ALL.DAT',STATUS='UNKNOWN')
+   	WRITE(3,*)'VARIABLES = "X", "Y","Z", "T","Tan","DT"'
+	WRITE(3,*)'ZONE I=33, J=33, K=33, F=POINT'
+                
+    do k3=1,NI_cu
+		do j3=1,NJ_cu
+			do i3=1,NK_cu
+				WRITE(3,'(1P6E15.5)') X_h(I3),Y_h(J3),Z_h(K3),F_1h(i3+(j3-1)*NK_cu+(k3-1)*NK_cu*NJ_cu),F1(i3+(j3-1)*NK_cu+(k3-1)*NK_cu*NJ_cu), &
+                                  DABS(F_1h(i3+(j3-1)*NK_cu+(k3-1)*NK_cu*NJ_cu)-F1(i3+(j3-1)*NK_cu+(k3-1)*NK_cu*NJ_cu))
+			enddo
+		enddo
+	enddo
+	  
+      	ENDFILE 3
+      	CLOSE(3)
+	!==================================================================
+
+	OPEN(UNIT=1,FILE='F.dat',STATUS='UNKNOWN')
+	write (1,*) "VARIABLES = ""i"", ""j"", ""k"", ""T"" "
+	
+	!write(1,*) "---------F--------"
+	do k3=1,NI_cu,9
+		do j3=1,NJ_cu,9
+			do i3=1,NK_cu,9
+				write (1,*) i3, j3, k3, F_1h(i3+(j3-1)*NK_cu+(k3-1)*NK_cu*NJ_cu)
+			enddo
+		enddo
+	enddo
+	
+	Close(1)
+	
+	write(*,*)"end write data"
+	read(*,*)
+
+	!TODO сделать deallocate всем динамическим массивам
+	deallocate(X_d, Y_d, Z_d, XU_d, YV_d, ZW_d, XDIF_d, YDIF_d,ZDIF_d,XCV_d,YCV_d,ZCV_d, F_1h, &
+				VCV_1d, SC_1d, SP_1d, RHO_1d, F_1d, AP0_1d, GAMI_1d, GAMJ_1d, GAMK_1d, AP_1d, CON_1d, AIM_1d, AIP_1d, &
+				AJM_1d, AJP_1d, AKM_1d, AKP_1d, TEMPS_d, PT_d, QT_d)
+
+end

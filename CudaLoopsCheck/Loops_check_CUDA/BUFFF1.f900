@@ -1,0 +1,105 @@
+﻿do i=1, 10    
+
+	DO K3 = 2, NK-1
+		DO J3 = 2, NJ-1
+			DO I3 = 2, NI-1
+				TEMPS(I3,J3,K3) = CON(I3,J3,K3) &
+							+ AJP(I3,J3,K3)*F_temp_h(I3+(J3+1-1)*NI+(K3-1)*NI*NJ) &
+							+ AJM(I3,J3,K3)*F_temp_h(I3+(J3-1-1)*NI+(K3-1)*NI*NJ) &
+							+ AKP(I3,J3,K3)*F_temp_h(I3+(J3-1)*NI+(K3+1-1)*NI*NJ) &
+							+ AKM(I3,J3,K3)*F_temp_h(I3+(J3-1)*NI+(K3-1-1)*NI*NJ)
+				!CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) = TEMPS(I3,J3,K3)
+			ENDDO
+		ENDDO
+	ENDDO	
+	
+	!TODO: После проверки нужно удалить массивы CHECK
+	DO K3 = 2, NJ-1
+      DO J3 = 2, NI-1
+        PTt(2-1) = 0.0
+        QTt(2-1) = F_temp_h(2-1+(J3-1)*NI+(K3-1)*NI*NJ)
+        DO I3 = 2, NI-1
+		  DENOM = AP(I3,J3,K3)-PTt(I3-1)*AIM(I3,J3,K3)
+          PTt(I3) = AIP(I3,J3,K3)/(DENOM+1.D-30)
+          QTt(I3) = (TEMPS(I3,J3,K3)+AIM(I3,J3,K3)*QTt(I3-1))/(DENOM+1.D-30)
+		  !CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) =   QTt(I3)
+        ENDDO
+        
+        DO I3 = NI-1,2,-1  
+          F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+1+(J3-1)*NI+(K3-1)*NI*NJ)*PTt(I3)+QTt(I3)
+		  !CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ)
+        ENDDO
+	
+      ENDDO
+	ENDDO
+
+	!--------------------------------------------------------------------------------
+
+	DO K3 = 2, NK-1
+		DO J3 = 2, NJ-1
+			DO I3 = 2, NI-1
+				TEMPS(I3,J3,K3) = CON(I3,J3,K3) &
+							+ AIP(I3,J3,K3)*F_temp_h(I3+1+(J3-1)*NI+(K3-1)*NI*NJ) &
+							+ AIM(I3,J3,K3)*F_temp_h(I3-1+(J3-1)*NI+(K3-1)*NI*NJ) &
+							+ AKP(I3,J3,K3)*F_temp_h(I3+(J3-1)*NI+(K3+1-1)*NI*NJ) &
+							+ AKM(I3,J3,K3)*F_temp_h(I3+(J3-1)*NI+(K3-1-1)*NI*NJ)
+				!CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ)
+			ENDDO
+		ENDDO
+	ENDDO	
+		!TODO: После проверки нужно удалить массивы CHECK
+	DO K3 = 2, NJ-1
+      DO I3 = 2, NI-1
+        PTt(2-1) = 0.0
+        QTt(2-1) = F_temp_h(I3+(2-1-1)*NI+(K3-1)*NI*NJ)
+        DO J3 = 2, NJ-1
+		  DENOM = AP(I3,J3,K3)-PTt(J3-1)*AJM(I3,J3,K3)
+          PTt(J3) = AJP(I3,J3,K3)/(DENOM+1.D-30)
+          QTt(J3) = (TEMPS(I3,J3,K3)+AJM(I3,J3,K3)*QTt(J3-1))/(DENOM+1.D-30)
+		  !CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) =   TEMPS(I3,J3,K3)
+        ENDDO
+        
+        DO J3 = NJ-1,2,-1  
+          F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+(J3-1+1)*NI+(K3-1)*NI*NJ)*PTt(J3)+QTt(J3)
+		  !CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ)
+        ENDDO
+	
+      ENDDO
+    ENDDO
+
+	!--------------------------------------------------------------------------------
+
+	!------------- Z_dir ---------------
+    !$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(I,J)
+    DO K3 = KST, NK-1 
+     DO J3 = JST, NJ-1
+        DO I3 = IST, NI-1
+          TEMPS(I3,J3,K3) = CON(I3,J3,K3) &
+                         + AIP(I3,J3,K3)*F_temp_h(I3+1+(J3-1)*NI+(K3-1)*NI*NJ)  &
+                         + AIM(I3,J3,K3)*F_temp_h(I3-1+(J3-1)*NI+(K3-1)*NI*NJ)  &
+                         + AJP(I3,J3,K3)*F_temp_h(I3+(J3+1-1)*NI+(K3-1)*NI*NJ)  &
+                         + AJM(I3,J3,K3)*F_temp_h(I3+(J3-1-1)*NI+(K3-1)*NI*NJ) 
+						 !CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) = TEMPS(I3,J3,K3)
+        ENDDO
+      ENDDO
+    ENDDO
+	    !$OMP PARALLEL DO DEFAULT(SHARED) PRIVATE(I,K,PT,QT,DENOM)
+    DO J3 = 2, NJ-1
+      DO I3 = 2, NI-1
+        PTt(2-1) = 0.0
+        QTt(2-1) = F_temp_h(I3+(J3-1)*NI+(2-1-1)*NI*NJ)  
+        DO K3 = 2, NK-1
+          DENOM = AP(I3,J3,K3)-PTt(K3-1)*AKM(I3,J3,K3)
+          PTt(K3) = AKP(I3,J3,K3)/(DENOM+1.D-30)
+          QTt(K3) = (TEMPS(I3,J3,K3)+AKM(I3,J3,K3)*QTt(K3-1))/(DENOM+1.D-30)
+		  !CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) =   PTt(K3)
+        ENDDO 
+    
+        DO K3 = NK-1, KST, -1
+          F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+(J3-1)*NI+(K3-1+1)*NI*NJ)*PTt(K3)+QTt(K3)
+		  CHECK(I3+(J3-1)*NI+(K3-1)*NI*NJ) = F_temp_h(I3+(J3-1)*NI+(K3-1)*NI*NJ)
+        ENDDO
+      ENDDO
+    ENDDO
+
+	enddo

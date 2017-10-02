@@ -1,0 +1,53 @@
+﻿program main
+
+use var	
+use user
+use maine
+
+implicit none
+	integer i;
+	
+	!real*8 :: start1, finish1
+	real*8, parameter :: pi_d=3.1415926535897932384626433832795
+	integer :: L1_h=99, M1_h=99, N1_h=99, NI_cu=99, NJ_cu=99, NK_cu=99, N_MIN=3, N_MIN_GRID=2
+	
+	integer :: i3, j3, k3
+	real*8 :: XL_h, YL_h, ZL_h
+	integer :: L2_h, M2_h, N2_h, L3_h, M3_h, N3_h
+	real*8 :: DX_h, DY_h, DZ_h, DT_h=1.E+30	,RELAX_h=1.0
+	OPEN(UNIT=4,FILE='err.out',STATUS='UNKNOWN')	
+	!call cpu_time(start1)
+
+	call grid	
+	call setup1
+	call start
+	call gamsor
+	!	call cpu_time(finish1)
+	call setup2
+
+
+	OPEN(UNIT=1,FILE='F.dat',STATUS='UNKNOWN')
+	OPEN(UNIT=2,FILE='TIME.OUT',STATUS='UNKNOWN')
+	write (1,*) "VARIABLES = ""i"", ""j"", ""k"", ""T"" "
+	write (2,*)"time (ms): ", (finish1-start1)*1000
+
+	!write(1,*) "---------F--------"
+	do k3=1,NI_cu
+		do j3=1,NJ_cu
+			do i3=1,NK_cu
+					write (1,*)i3, j3, k3, F(i3,j3,k3)
+			enddo
+		enddo
+	enddo
+	
+	call output_1
+
+	Close(1)
+	Close(2)
+	Close(4)
+	write(*,*)"end write data"
+
+	write(*,*)"end"
+	read(*,*)
+	!read(*,*)
+end

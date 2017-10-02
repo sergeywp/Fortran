@@ -1,0 +1,79 @@
+﻿subroutine deviceQuery
+use cudafor
+ implicit none
+
+ type (cudaDeviceProp) :: prop
+ integer :: nDevices =0, i, ierr
+
+ ! Number of CUDA -capable devices
+
+ ierr = cudaGetDeviceCount(nDevices)
+ OPEN(UNIT=1,FILE='PARAM.TXT',STATUS='UNKNOWN')
+ if (nDevices == 0) then
+	write(*,*)"(No CUDA devices found)"
+	write(1,*)"(No CUDA devices found)"
+	stop
+	else if (nDevices == 1) then
+		write(*,*)"(One CUDA device found)"
+		write(1,*)"(One CUDA device found)"
+		else
+			write(*,*)"(CUDA devices found:)", nDevices
+			write(1,*)"(CUDA devices found:)", nDevices
+ end if
+
+ ! Loop over devices
+
+ do i = 0, nDevices -1
+
+	write(*,*)"(Device Number:)", i
+	write(1,*)"(Device Number:)", i
+
+
+	ierr = cudaGetDeviceProperties(prop , i)
+
+	! General device info
+	
+	write(*,*)"Device Name               :", trim(prop%name)
+	write(1,*)"Device Name               :", trim(prop%name)
+
+	write(*,*)"Compute Capability        :", &
+		prop%major ,"’.’", prop%minor
+	write(1,*)"Compute Capability        :", &
+		prop%major ,"’.’", prop%minor
+	
+	write(*,*)"Number of Multiprocessors :", &
+		prop%multiProcessorCount
+	write(1,*)"Number of Multiprocessors :", &
+		prop%multiProcessorCount
+
+!	write(*,*)" (Max Threads per Multiprocessor:)", &
+!		prop%maxThreadsPerMultiprocessor
+	write(*,*)"Global Memory (GB)        :", &
+		prop%totalGlobalMem /1024.0**3
+	write(1,*)"Global Memory (GB)        :", &
+		prop%totalGlobalMem /1024.0**3
+	
+	write(*,*)"Max Grid Dims             :", &
+		prop%maxGridSize
+	write(1,*)"Max Grid Dims             :", &
+		prop%maxGridSize
+	
+	write(*,*)"Max Block Dims            :", &
+		prop%maxThreadsDim
+	write(*,*)"Max Threads per Block     :", &
+		prop%maxThreadsPerBlock
+	write(1,*)"Max Block Dims            :", &
+		prop%maxThreadsDim
+	write(1,*)"Max Threads per Block     :", &
+		prop%maxThreadsPerBlock
+	
+	read(*,*)
+ enddo
+ close(1)
+ end subroutine deviceQuery
+
+ program main
+	implicit none
+	call deviceQuery
+
+end

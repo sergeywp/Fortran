@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--PGI Visual Fortran Project File-->
+<PGIproject Version="2.0">
+	<General ProjectIdGuid="{0068C4E5-5987-48EA-A3C8-CCEFD232E68E}"/>
+	<Configurations>
+		<Config Name="Debug|Win32" OutDir="$(PlatformName)\$(ConfigurationName)" IntDir="$(PlatformName)\$(ConfigurationName)" CfgTyp="0" DbgEnvMerge="0" DbgMPI="0" DbgFmt="0" Optzn="0" CFEnable="0" LinkOutput="$(OutDir)\$(ProjectName).exe"/>
+		<Config Name="Release|Win32" OutDir="$(PlatformName)\$(ConfigurationName)" IntDir="$(PlatformName)\$(ConfigurationName)" CfgTyp="0" DbgEnvMerge="0" DbgMPI="0" LinkOutput="$(OutDir)\$(ProjectName).exe"/>
+	</Configurations>
+	<Files>
+		<Folder Name="Include Files">
+		</Folder>
+		<Folder Name="Resource Files">
+		</Folder>
+		<Folder Name="Source Files">
+			<File Name="kernels.cuf" ProjRelPath="T" IsFixedFormat="F" IsIncludeFile="F">
+				<Config Name="Debug|Win32"/>
+				<Config Name="Release|Win32"/>
+			</File>
+			<File Name="main.cuf" ProjRelPath="T" IsFixedFormat="F" IsIncludeFile="F">
+				<Config Name="Debug|Win32"/>
+				<Config Name="Release|Win32"/>
+			</File>
+			<File Name="readWrite.cuf" ProjRelPath="T" IsFixedFormat="F" IsIncludeFile="F">
+				<Config Name="Debug|Win32"/>
+				<Config Name="Release|Win32"/>
+			</File>
+		</Folder>
+	</Files>
+	<ProjStartupServices/>
+	<Globals/>
+</PGIproject>

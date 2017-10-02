@@ -1,0 +1,241 @@
+﻿program separate_cube
+	
+	use gpu_kernels
+	use div_arr
+
+	implicit none
+	
+	integer i,j,k
+
+	logical, device,allocatable :: bd_d(:,:,:)
+	logical, allocatable :: bd_h(:,:,:)
+	!-----------------------------------------------------------------------------------------
+	!      СОЗДАНИЕ МАССИВОВ ДЛЯ ПРОВЕРКИ РАЗДЕЛЕНИЯ
+	!-----------------------------------------------------------------------------------------
+	!real*8, device, allocatable :: x_d(:), y_d(:), z_d(:), vcv_d(:)         !целые массивы без разделения
+	real*8, device, allocatable :: x_d_c(:), y_d_c(:), z_d_c(:), vcv_d_c(:) !целые массивы c разделения
+	integer, device,allocatable :: NI_d, NJ_d, NK_d, NDI_d, NDJ_d, NDK_d, NI_dc, NJ_dc, NK_dc, i_d, j_d, k_d  
+	
+	!real*8, allocatable :: x_h(:), y_h(:), z_h(:), vcv_h(:)								 !целые массивы без разделения
+	character(30) :: name
+	real*8, allocatable :: x_h_c(:), y_h_c(:), z_h_c(:), vcv_h_c(:)						 !целые массивы c разделения
+	!real*8, allocatable :: x_h_call(:,:), y_h_call(:,:), z_h_call(:,:), vcv_h_call(:,:)	 !массивы хранящие в себе 
+															!разделенные части общего по первому индексу - сам массив, по второму его положение
+	integer :: NI_h = 600, NJ_h = 600, NK_h = 600, NDI = 3, NDJ = 3, NDK = 3,NI_hc, NJ_hc, NK_hc										 
+
+	write(*,*)"step dev"
+	allocate(	x_d_c(NI_h/NDI+1), y_d_c(NJ_h/NDJ+1), z_d_c(NK_h/NDK+1), vcv_d_c((NI_h/NDI+1)*(NJ_h/NDJ+1)*(NK_h/NDK+1)),&
+				NI_d, NJ_d, NK_d, NDI_d, NDJ_d, NDK_d, NI_dc, NJ_dc, NK_dc, i_d, j_d, k_d, bd_d(3,3,3))
+	
+	write(*,*)"step host"
+	allocate(	&!x_h(NI_h), y_h(NJ_h), z_h(NK_h),& ,vcv_h(NI_h*NJ_h*NK_h),&
+				x_h_c(NI_h/NDI+1), y_h_c(NJ_h/NDJ+1), z_h_c(NK_h/NDK+1), vcv_h_c((NI_h/NDI+1)*(NJ_h/NDJ+1)*(NK_h/NDK+1)),&
+				!x_h_call(NI_h/NDI+1,NDI), y_h_call(NJ_h/NDJ+1,NDJ), z_h_call(NK_h/NDK+1,NDK), vcv_h_call((NI_h/NDI+1)*(NJ_h/NDJ+1)*(NK_h/NDK+1),NDI*NDJ*NDK),&
+				bd_h(3,3,3)  )
+
+	NI_d = NI_h
+	NJ_d = NJ_h
+	NK_d = NK_h
+	NDI_d = NDI
+	NDJ_d = NDJ
+	NDK_d = NDK
+	NI_dc = NI_h/NDI+1
+	NJ_dc = NJ_h/NDJ+1
+	NK_dc = NK_h/NDK+1
+	NI_hc = NI_h/NDI+1
+	NJ_hc = NJ_h/NDJ+1
+	NK_hc = NK_h/NDK+1
+
+	!-------------------------------------------------------------------------------------------------
+	!    ШАГ 1:    ЗАПОЛНЕНИЕ ОБЫЧНЫХ МАССИВОВ X, Y, Z 
+	!-------------------------------------------------------------------------------------------------
+	!call full_xyz<<<dim3(NI_h+NJ_h+NK_h/32+1,1,1), dim3(32,1,1)>>>(X_d, Y_d, Z_d, NI_d, NJ_d, NK_d)	
+	!-------------------------------------------------------------------------------------------------
+	!    ШАГ 2:    ВЫЧИСЛЕНИЕ ОБЫЧНОГО VCV ЦЕЛОГО
+	!-------------------------------------------------------------------------------------------------
+	!call full_vcv<<<dim3(NI_h*NJ_h*NK_h/32+1,1,1), dim3(32,1,1)>>>(vcv_d, X_d, Y_d, Z_d, NI_d, NJ_d, NK_d)		
+	!-------------------------------------------------------------------------------------------------
+	!    ШАГ 3:    ДЕОМПОЗИЦИЯ ОБЛАСТИ И ВЫЧИСЛЕНИЕ МАССИВОВ УМЕНЬШЕННОГО РАЗМЕРА X_С, Y_С, Z_С
+	!-------------------------------------------------------------------------------------------------
+	
+	!open(ounit,file=oname,form='formatted',
+    !+  blocksize=4096, buffered='yes', buffercount=1)
+
+
+	OPEN(UNIT=5,FILE='X_d.OUT',STATUS='UNKNOWN')
+
+	! 3.1 - разделение одномерных массивов на множество меньших
+	!call devide_massive_one(x_h, x_h_call, NI_h, NDI)
+	!call devide_massive_one(y_h, y_h_call, NJ_h, NDJ)
+	!call devide_massive_one(z_h, z_h_call, NK_h, NDK)
+	
+	write(*,*)"start kernels"
+	!3.2 - выполнение ядер по присвоению значения для каждой части одномерных массивов
+
+	!TODO:  все это хуита ёбаная. Выяснилось что памяти на хосте у меня тоже не хватает, поэтому нужно создать новый проект,
+	!		в котором нужно проверить как правильно записывать в файл и читать из него.
+	!
+	!TODO:  КАК ПРАВИЛЬНО ЗАПИСЫВАТЬ В ФАЙЛЫ Я РАЗОБРАЛСЯ. ТЕПЕРЬ НУЖНО ПРОДОЛЖИТЬ ЭТОТ ПРОЕКТ. А ИМЕННО:
+	!		У МЕНЯ СДЕЛАНО:
+	!				---НА ДАННЫЙ МОМЕНТ СДЕЛАНА ТОЛЬКО ПОПЫТКА РАБОТЫ С ОДНОМЕРНЫМИ МАССИВАМИ - РАБОТАЕТ ПРАВИЛЬНО.
+	!		НУЖНО СДЕЛАТЬ:
+	!				1)  НЕОБХООДИМО ПЕРЕДЕЛАТЬ РАБОТУ С ОДНОМЕРНЫМИ МАССИВАМИ. 
+	!				    ОБЩИЙ МАССИВ ХОСТА НУЖНО ТАКЖЕ ПОКРАМСАТЬ И СОХРАНИТЬ 
+	!					КАЖДУЮ ЧАСТЬ В ОТДЕЛЬНЫЙ ФАЙЛ.
+	!				2)  ДАЛЕЕ НУЖНО ПОПРОБОВАТЬ ВСЕ ЭТО ПРОВЕРНУТЬ ДЛЯ ТРХМЕРНОГО МАССИВА.
+	!			
+	!		ТАКИМ ОБРАЗОМ ОБЩАЯ РАБОТА ПРОГРАММЫ ВГЛЯДИТ СЛЕДУЮЩИМ ОБРАЗОМ: 
+	!			1)  БЕРУТСЯ НУЖНЫЕ ЧАСТИ МАССИВОВ ИЗ ФАЙЛА
+	!				(ЗДЕСЬ НУЖНО ОПРЕДЕЛИТЬ КАКИЕ ПЕРЕМЕННЫЕ ЗА ЭТО ОТВЕЧАЮТ)
+	!			2)	ПЕРЕДАЮТСЯ В ПАМЯТЬ ВИДЕОКАРТЫ
+	!				(ТАК ЖЕ НАДО ОПРЕДЕЛИТЬ КАКИЕ ПЕРЕМЕННЫЕ ЗА ЭТО ОТВЕЧАЮТ)
+	!			3)	ВЫПОЛНЯЕТСЯ ЯДРО
+	!			4)	ОБРАБОТАННАЯ ЧАСТЬ МАССИВА ШЛЕТСЯ ОБРАТНО НА ХОСТ
+	!			5)	ОБРАБОТАННАЯ ЧАСТЬ МАССИВА НА ХОСТЕ СОХРАНЯЕТСЯ В ФАЙЛ.
+
+	write(5,*)"--------------------------x_h_call--------------------------------"
+	name = "X_mass_"
+	do i=1,NDI
+		i_d = i
+		call full_x_call<<<dim3((NI_h/NDI+1)/32+1,1,1), dim3(32,1,1)>>>(x_d_c, NI_dc, i_d)
+		x_h_c = x_d_c		
+		call write_mass_one_hdd(x_h_c, name, NI_hc, i)
+	enddo
+	
+	write(5,*)"--------------------------y_h_call--------------------------------"
+	name = "Y_mass_"
+	do i=1,NDJ
+		i_d = i	
+		call full_x_call<<<dim3((NJ_h/NDJ+1)/32+1,1,1), dim3(32,1,1)>>>(y_d_c, NJ_dc, i_d)
+		y_h_c = y_d_c
+		call write_mass_one_hdd(y_h_c, name, NJ_hc, i)
+	enddo
+
+	write(5,*)"--------------------------z_h_call--------------------------------"		
+	name = "Z_mass_"
+	do i=1,NDK
+		i_d = i	
+		call full_x_call<<<dim3((NK_h/NDK+1)/32+1,1,1), dim3(32,1,1)>>>(z_d_c, NK_dc, i_d)
+		z_h_c = z_d_c
+		call write_mass_one_hdd(z_h_c, name, NK_hc, i)
+	enddo
+	
+	write(5,*)"--------------------------vcv_h_call--------------------------------"		
+	do i=1,NDI
+		i_d = i
+		name = "X_mass_"
+		call read_mass_one_hdd(x_h_c, name, NI_hc, i)		
+		x_d_c = x_h_c
+		do j=1,NDJ
+			j_d = j
+			name = "Y_mass_"
+			call read_mass_one_hdd(y_h_c, name, NJ_hc, j)
+			y_d_c = y_h_c
+			do k=1,NDK				
+				k_d = k				
+				name = "Z_mass_"
+				call read_mass_one_hdd(z_h_c, name, NK_hc, k)
+				z_d_c = z_h_c
+
+				name = "vcv_mass_"
+				call full_vcv_call<<<dim3(((NI_h/NDI+1)*(NJ_h/NDJ+1)*(NK_h/NDK+1))/32+1,1,1), dim3(32,1,1)>>>(vcv_d_c, x_d_c, y_d_c, z_d_c, &
+																NI_dc, NJ_dc, NK_dc, i_d, j_d, k_d)
+				vcv_h_c = vcv_d_c
+				write(*,*)"hdd write", i, j, k
+				call write_mass_three_hdd(vcv_h_c, name, NI_hc, NJ_hc, NK_hc, i, j, k, NDI, NDJ, NDK)
+				!TODO:  1)сделать массив, в котором будут храниться все постоянные части имен файлов
+				!		2)создать ядро full_vcv_call для заполнения vcv
+				!TODO:  протестить, решить, по-моему  NDI, NDJ, NDK не нужны
+				!       3)создать процедуру write_mass_three_hdd и read_mass_three_hdd для чтения и записи массивов на жесткий диск
+				!		4)протестить полученную хуйню
+			enddo
+		enddo
+	enddo
+
+			!TODO: БЫЛИ СОЗДАННЫМ МАССИВЫ x_h, y_h, z_h, vcv_h, x_d, y_d, z_d, vcv_d, - 
+			!      они нужны для обычного присваивания
+			!	   так же были созданны массивы	x_h_c, y_h_c, z_h_c, vcv_h_c, x_d_c, y_d_c, z_d_c, vcv_d_c
+			!	   они будут использоваться как буферные для передачи части массива от общего массива на
+			!	   ядро видеокарты.
+			!      x_h_call, y_h_call, z_h_call, vcv_h_call - нужны для хранения разбиений общего массива.
+			!      то есть сама операция выглядит так:
+			!	           1) разбиваем массив на части и сохраняем части в _h_call
+			!			   2) персылаем нужную часть в _h_c массив
+			!              3) пересылаем _h_c массив в _d_c массив
+			!			   4) вызываем ядро для изменения _d_c массива
+			!              5) отправляем результаты в _h_c
+			!              6) копируем _h_c в _h_call массив
+			!      TODO: сделать пока так, потом избавиться от массива _h_c и копировать сразу в _d_c и
+			!            обратно в _h_call
+			!
+			!  В общем на шаге 3 необходимо сделать:
+			!				1) разбить массивы x_h, y_h, z_h с помощью метода devide_massive_one
+			!				   и записать результаты в x_h_call, y_h_call, z_h_call.
+			!				2) переместить по очереди значение массивов x_h_call, y_h_call, z_h_call в
+			!				   x_h_c, y_h_c, z_h_c
+			!				3) присвоить x_h_c, y_h_c, z_h_c массивам x_d_c, y_d_c, z_d_c
+			!				   TODO: этот шаг потом можно будет пропустить и вообще не использовать массивы x_h_c, y_h_c, z_h_c
+			!               4) вызывать ядро full_xyz с массивами x_d_c, y_d_c, z_d_c
+			!               5) присвоить обратно результаты вычислений из x_d_c, y_d_c, z_d_c в x_d_c, y_d_c, z_d_c,
+			!               6) затем присвоить в x_h_call, y_h_call, z_h_call.
+			!               7) написать процедуру composite_massive_one, которая будет собирать из x_h_call, y_h_call, z_h_call
+			!                  целые массивы
+			!               8) сравнить результаты при x_h, y_h, z_h и x_h_call, y_h_call, z_h_call
+
+	!-------------------------------------------------------------------------------------------------
+	!    ШАГ 4:    ДЕОМПОЗИЦИЯ ОБЛАСТИ И ВЫЧИСЛЕНИЕ МАССИВА УМЕНЬШЕННОГО РАЗМЕРА VCV_С
+	!-------------------------------------------------------------------------------------------------
+
+
+	!x_h  = x_d
+	!y_h  = y_d
+	!z_h  = z_d
+	!vcv_h = vcv_d
+
+	
+
+
+	!-------------------------------------------------------------------------------------------------
+	!		ОБЛАСТЬ ВЫВОДА
+	!-------------------------------------------------------------------------------------------------
+
+5	format (15f15.5)
+	OPEN(UNIT=1,FILE='CHECK.OUT',STATUS='UNKNOWN')
+	OPEN(UNIT=2,FILE='CHECK1.OUT',STATUS='UNKNOWN')
+	OPEN(UNIT=3,FILE='CHECK2.OUT',STATUS='UNKNOWN')
+	OPEN(UNIT=4,FILE='VCV.OUT',STATUS='UNKNOWN')
+
+	do i=1, NI_h/5+1
+		!write(3,5) Y_one(i,1),Y_one(i,2),Y_one(i,3),Y_one(i,4),Y_one(i,5)
+	enddo
+	!	write(3,*) Y_one(1,1),Y_one(1,2),Y_one(1,3),Y_one(1,4),Y_one(1,5)
+	!	write(3,*) Y_one(2,1),Y_one(2,2),Y_one(2,3),Y_one(2,4),Y_one(2,5)
+	!	write(3,*) Y_one(NI_h/3+2-1,1),Y_one(NI_h/3+2-1,2),Y_one(NI_h/3+2-1,3),Y_one(NI_h/3+2-1,4),Y_one(NI_h/3+2-1,5)
+	!	write(3,*) Y_one(NI_h/3+2,1),Y_one(NI_h/3+2,2),Y_one(NI_h/3+2,3),Y_one(NI_h/3+2,4),Y_one(NI_h/3+2,5)
+	
+	write(4,*)"------------VCV-----------"
+	do i=1,NI_h
+		do j=1,NJ_h
+			do k=1,NK_h
+				!write(4,*)x_h(i),y_h(j),z_h(k)
+				!write (4,*) vcv_h(i+(j-1)*NI_h+(k-1)*NI_h*NJ_h)
+			enddo
+		enddo
+	enddo
+			
+
+	do i=1, NI_h
+		!write(2,*) x_h(i), y_h(i), z_h(i)
+	enddo
+
+
+	close(1)
+	close(2)
+	close(3)
+	close(4)
+	close(5)
+
+	write(*,*) "end"
+	!read(*,*)
+
+end program separate_cube

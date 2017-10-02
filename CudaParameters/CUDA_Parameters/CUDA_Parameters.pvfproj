@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--PGI Visual Fortran Project File-->
+<PGIproject Version="2.0">
+	<General ProjectIdGuid="{3D15B43B-9874-449B-837E-FDD308A19C06}"/>
+	<Configurations>
+		<Config Name="Debug|Win32" OutDir="$(PlatformName)\$(ConfigurationName)" IntDir="$(PlatformName)\$(ConfigurationName)" CfgTyp="0" DbgEnvMerge="0" DbgMPI="0" DbgFmt="0" Optzn="0" CFEnable="0" LinkOutput="$(OutDir)\$(ProjectName).exe"/>
+		<Config Name="Release|Win32" OutDir="$(PlatformName)\$(ConfigurationName)" IntDir="$(PlatformName)\$(ConfigurationName)" CfgTyp="0" DbgEnvMerge="0" DbgMPI="0" LinkOutput="$(OutDir)\$(ProjectName).exe"/>
+	</Configurations>
+	<Files>
+		<Folder Name="Include Files">
+		</Folder>
+		<Folder Name="Resource Files">
+		</Folder>
+		<Folder Name="Source Files">
+			<File Name="ParametersCUDA.cuf" ProjRelPath="T" IsFixedFormat="F" IsIncludeFile="F">
+				<Config Name="Debug|Win32"/>
+				<Config Name="Release|Win32"/>
+			</File>
+		</Folder>
+	</Files>
+	<ProjStartupServices/>
+	<Globals/>
+</PGIproject>

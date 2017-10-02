@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{5E53CCA8-D880-4964-8B8C-B3DB057578E7}") = "Parallel_prog_labs", "Parallel_prog_labs\Parallel_prog_labs.pvfproj", "{6CFAD305-C9DD-487C-83C6-9920929D7479}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6CFAD305-C9DD-487C-83C6-9920929D7479}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6CFAD305-C9DD-487C-83C6-9920929D7479}.Debug|Win32.Build.0 = Debug|Win32
+		{6CFAD305-C9DD-487C-83C6-9920929D7479}.Release|Win32.ActiveCfg = Release|Win32
+		{6CFAD305-C9DD-487C-83C6-9920929D7479}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,31 @@
+﻿module gpu_kernels_read
+	use cudafor
+
+	contains
+
+	attributes(global) subroutine full_x(X, Y, Z, NI, NJ, NK)
+		integer, device :: NI, NJ, NK
+		real*8,  device :: X(NI), Y(NJ), Z(NK)
+
+		i=(blockidx%x-1) * blockdim%x + threadidx%x
+
+		if((i>=1).and.(i<=NI)) X(i) = i
+		if((i>=1+NI).and.(i<=NI+NJ)) Y(i-NI) = i-NI
+		if((i>=1+NI+NJ).and.(i<=NI+NJ+NK)) Z(i-NI-NJ) = i-NI-NJ
+
+	end subroutine
+
+	attributes(global) subroutine full_vcv(F, X, Y, Z, NI, NJ, NK)
+		integer, device :: NI, NJ, NK
+		real*8,  device :: F(NI*NJ*NK), X(NI), Y(NJ), Z(NK)
+
+		i=(blockidx%x-1) * blockdim%x + threadidx%x
+
+		!MOD((i-1),NI)+1 + (MOD(INT((i-1)/NI),NJ)+1-1)*NI + (INT((i-1)/(NJ*NI))+1-1)*NI*NJ
+		if((i>=1).and.(i<=NI*NJ*NK)) &
+		F(MOD((i-1),NI)+1 + (MOD(INT((i-1)/NI),NJ)+1-1)*NI + (INT((i-1)/(NJ*NI))+1-1)*NI*NJ) = &
+		X(MOD((i-1),NI)+1)+Y(MOD(INT((i-1)/NI),NJ)+1)+Z(INT((i-1)/(NJ*NI))+1)
+
+	end subroutine
+
+end module

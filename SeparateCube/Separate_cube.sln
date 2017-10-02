@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{5E53CCA8-D880-4964-8B8C-B3DB057578E7}") = "Separate_cube", "Separate_cube\Separate_cube.pvfproj", "{BC94A56F-5BCA-4050-ACA9-B4EFA94AFE29}"
+EndProject
+Project("{5E53CCA8-D880-4964-8B8C-B3DB057578E7}") = "ReadWriteFile", "ReadWriteFile\ReadWriteFile.pvfproj", "{0068C4E5-5987-48EA-A3C8-CCEFD232E68E}"
+EndProject
+Project("{5E53CCA8-D880-4964-8B8C-B3DB057578E7}") = "StringName", "StringName\StringName.pvfproj", "{504676FD-3C0E-4513-93D6-DD3F43C538A4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BC94A56F-5BCA-4050-ACA9-B4EFA94AFE29}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BC94A56F-5BCA-4050-ACA9-B4EFA94AFE29}.Debug|Win32.Build.0 = Debug|Win32
+		{BC94A56F-5BCA-4050-ACA9-B4EFA94AFE29}.Release|Win32.ActiveCfg = Release|Win32
+		{BC94A56F-5BCA-4050-ACA9-B4EFA94AFE29}.Release|Win32.Build.0 = Release|Win32
+		{0068C4E5-5987-48EA-A3C8-CCEFD232E68E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0068C4E5-5987-48EA-A3C8-CCEFD232E68E}.Debug|Win32.Build.0 = Debug|Win32
+		{0068C4E5-5987-48EA-A3C8-CCEFD232E68E}.Release|Win32.ActiveCfg = Release|Win32
+		{0068C4E5-5987-48EA-A3C8-CCEFD232E68E}.Release|Win32.Build.0 = Release|Win32
+		{504676FD-3C0E-4513-93D6-DD3F43C538A4}.Debug|Win32.ActiveCfg = Debug|Win32
+		{504676FD-3C0E-4513-93D6-DD3F43C538A4}.Debug|Win32.Build.0 = Debug|Win32
+		{504676FD-3C0E-4513-93D6-DD3F43C538A4}.Release|Win32.ActiveCfg = Release|Win32
+		{504676FD-3C0E-4513-93D6-DD3F43C538A4}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

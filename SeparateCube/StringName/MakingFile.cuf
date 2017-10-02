@@ -1,0 +1,24 @@
+﻿module making_file
+	contains
+
+	subroutine makeFile(consNamePart, fullName, NI, NJ, NK)
+		integer :: i, j, k, NI, NJ, NK
+		character(30) :: consNamePart, changeNamePart, fullName
+		do i=1,NI
+			do j=1,NJ
+				do k=1,NK
+					write(changeNamePart,'(3i3,a4)')i,j,k,".txt"
+					fullName = trim(consNamePart)//trim(changeNamePart)
+					OPEN(UNIT=2,FILE=fullName,STATUS='UNKNOWN')
+					!------------запись в файл-------------------
+					write(2,*) "hello world!"
+					!--------------------------------------------
+					close(2)
+					!consNamePart = fullName
+				enddo
+			enddo
+		enddo
+
+	end subroutine
+
+end module

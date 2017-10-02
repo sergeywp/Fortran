@@ -1,0 +1,9 @@
+ (One CUDA device found)
+ (Device Number:)            0
+ Device Name               :GeForce GT 740M  (CPU)
+ Compute Capability        :            3 ’.’            5
+ Number of Multiprocessors :            2
+ Global Memory (GB)        :    1.000000    
+ Max Grid Dims             :   2147483647        65535        65535
+ Max Block Dims            :         1024         1024           64
+ Max Threads per Block     :         1024

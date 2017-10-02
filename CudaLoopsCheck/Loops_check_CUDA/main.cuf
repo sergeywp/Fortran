@@ -1,0 +1,84 @@
+﻿      program prog
+
+	  use gpu_kernels_1
+
+      implicit none
+		integer i,j,k
+
+		real*8, device, allocatable :: X_d(:), Y_d(:), Z_d(:)
+		real*8, device, allocatable :: mc_d(:,:)
+		real*8, device, allocatable :: X1_d(:), Y1_d(:), Z1_d(:)
+		integer, device,allocatable :: NI_d, NJ_d, NK_d, N_d
+
+		real*8, allocatable :: X_h(:), Y_h(:), Z_h(:)
+		real*8, allocatable :: mc_h(:,:)
+		real*8, allocatable :: X1_h(:), Y1_h(:), Z1_h(:)
+		integer :: NI_h = 12, NJ_h = 22, NK_h = 35, N_h = 3
+
+		allocate(X_d(NI_h*NJ_h*NK_h), Y_d(NI_h*NJ_h*NK_h), Z_d(NI_h*NJ_h*NK_h), X_h(NI_h*NJ_h*NK_h), Y_h(NI_h*NJ_h*NK_h), Z_h(NI_h*NJ_h*NK_h),NI_d, NJ_d, NK_d,&
+				 X1_d(NI_h*NJ_h*NK_h), Y1_d(NI_h*NJ_h*NK_h), Z1_d(NI_h*NJ_h*NK_h), X1_h(NI_h*NJ_h*NK_h), Y1_h(NI_h*NJ_h*NK_h), Z1_h(NI_h*NJ_h*NK_h),&
+				 mc_d(NI_h*NJ_h*NK_h,N_h), mc_h(NI_h*NJ_h*NK_h,N_h),N_d)
+
+		X_h = 5
+		Y_h = 6
+
+		X_d = X_h
+		X1_d = X_h
+
+		Y_d = Y_h
+		Y1_d = Y_h
+
+		NI_d = NI_h
+		NJ_d = NJ_h
+		NK_d = NK_h
+		
+		
+		N_d = N_h
+
+		!----------------------------------------------------------------------------------------------------------------------
+		!                  ПРОВЕРКА ИНДЕКСОВ ЦИКЛА
+		!----------------------------------------------------------------------------------------------------------------------
+
+		call loop_check<<<dim3(NI_h*NJ_h*NK_h*2/32+1,1,1), dim3(32,1,1)>>>(mc_d, NI_d, NJ_d, NK_d, N_d)
+
+		mc_h = mc_d
+
+		!----------------------------------------------------------------------------------------------------------------------
+		call gpu_loop_1<<<dim3(NI_h*NJ_h*NK_h*2/32+1,1,1), dim3(32,1,1)>>>(X_d, Y_d, Z_d, NI_d, NJ_d, NK_d)
+		call gpu_loop_2<<<dim3(NI_h*NJ_h*NK_h*2/32+1,1,1), dim3(32,1,1)>>>(X1_d, Y1_d, Z1_d, NI_d, NJ_d, NK_d)
+
+
+		Z_h = Z_d
+		Z1_h = Z1_d
+
+		OPEN(UNIT=1,FILE='CHECK.OUT',STATUS='UNKNOWN')
+		OPEN(UNIT=2,FILE='CHECK2.OUT',STATUS='UNKNOWN')
+
+		do i=1, NI_h
+			do j=1, NJ_h
+				do k=1, NK_h
+					write(2,*) "-----------------------------------------------------------------------"
+					write(2,*) mc_h(i+(j-1)*NI_h+(k-1)*NI_h*NJ_h,1), i
+					write(2,*) mc_h(i+(j-1)*NI_h+(k-1)*NI_h*NJ_h,2), j
+					write(2,*) mc_h(i+(j-1)*NI_h+(k-1)*NI_h*NJ_h,3), k
+				enddo
+			enddo
+		enddo
+
+		do i=1, NI_h*NJ_h*NK_h
+			write(1,*) mc_h(i,1), mc_h(i,2), mc_h(i,3)
+		enddo 
+
+		do i=1, NI_h*NJ_h*NK_h
+			if((Z_h(i)).NE.(Z1_h(i))) then
+				!write(1,*) Z_h(i),Z1_h(i)
+			endif
+		enddo
+		deallocate(X_d, Y_d, Z_d, X_h, Y_h, Z_h)
+
+		close(1)
+		close(2)
+
+		write(*,*) "end"
+		read(*,*)
+      end program prog

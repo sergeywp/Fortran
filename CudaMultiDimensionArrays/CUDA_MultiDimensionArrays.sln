@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{5E53CCA8-D880-4964-8B8C-B3DB057578E7}") = "CUDA_MultiDimensionArrays", "CUDA_MultiDimensionArrays\CUDA_MultiDimensionArrays.pvfproj", "{FB743713-B331-4384-8D14-7B1E3B291505}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FB743713-B331-4384-8D14-7B1E3B291505}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FB743713-B331-4384-8D14-7B1E3B291505}.Debug|Win32.Build.0 = Debug|Win32
+		{FB743713-B331-4384-8D14-7B1E3B291505}.Release|Win32.ActiveCfg = Release|Win32
+		{FB743713-B331-4384-8D14-7B1E3B291505}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

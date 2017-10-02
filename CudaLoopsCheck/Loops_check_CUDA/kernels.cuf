@@ -1,0 +1,155 @@
+﻿module gpu_kernels_1
+	use cudafor
+
+	contains
+	
+	attributes(global) subroutine div_qub(X, NI, NJ, NK, N)
+		integer, device :: ii, NI, NJ, NK
+		real*8, device :: X((NI+1)*(NJ+1)*(NK+1))
+
+		i=(blockidx%x-1) * blockdim%x + threadidx%x
+		if((i>=1).and.((NI+1)*(NJ+1)*(NK+1)).and.((MOD((i-1),NI)+1).EQ.1).or.((MOD(INT((i-1)/NI),NJ)+1).EQ.1).or.((INT((i-1)/(NJ*NI))+1).EQ.1).or.&
+			 ((MOD((i-1),NI)+1).EQ.(NI+1)).or.((MOD(INT((i-1)/NI),NJ)+1).EQ.(NJ+1)).or.((INT((i-1)/(NJ*NI))+1).EQ.(NK+1))) then
+			 X(MOD((i-1),NI+1)+1 + (MOD(INT((i-1)/(NI+1)),(NJ+1))+1-1)*(NI+1) + (INT((i-1)/((NJ+1)*(NI+1)))+1-1)*(NI+1)*(NJ+1)) = 0
+		endif		
+
+		if((i>=1).and.((NI+1)*(NJ+1)*(NK+1)).and.((MOD((i-1),NI)+1).EQ.1).and.((MOD(INT((i-1)/NI),NJ)+1).EQ.1).and.((INT((i-1)/(NJ*NI))+1).EQ.1).and.&
+			 ((MOD((i-1),NI)+1).EQ.(NI+1)).and.((MOD(INT((i-1)/NI),NJ)+1).EQ.(NJ+1)).and.((INT((i-1)/(NJ*NI))+1).EQ.(NK+1))) then
+			 X(MOD((i-1),NI+1)+1 + (MOD(INT((i-1)/(NI+1)),(NJ+1))+1-1)*(NI+1) + (INT((i-1)/((NJ+1)*(NI+1)))+1-1)*(NI+1)*(NJ+1)) = 1
+		endif
+
+	end subroutine
+
+	attributes(global) subroutine loop_check(X, NI, NJ, NK, N)
+		integer, device :: ii, jj, NI, NJ, NK
+		real*8, device :: X(NI*NJ*NK,N)
+
+		i=(blockidx%x-1) * blockdim%x + threadidx%x
+
+		!if((i>=1).and.(i<=NI*NJ*NK)) then
+		!	X(i,1) = MOD((i-1),NI)+1               !i
+		!	X(i,2) = MOD(INT((i-1)/NI),NJ)+1       !j
+		!	X(i,3) = INT((i-1)/(NJ*NI))+1          !k
+		!endif
+
+		!MOD((i-1),NI)+1 + (MOD(INT((i-1)/NI),NJ)+1-1)*NI + (INT((i-1)/(NJ*NI))+1-1)*NI*NJ
+
+		!if((i>=1).and.(i<=NI*NJ)) then
+		!	do ii=0,NK
+		!		X(i+ii*(NI*NJ),1) = MOD((i+ii*(NI*NJ)-1),NI)+1               !i
+		!		X(i+ii*(NI*NJ),2) = MOD(INT((i+ii*(NI*NJ)-1)/NI),NJ)+1       !j
+		!		X(i+ii*(NI*NJ),3) = INT((i+ii*(NI*NJ)-1)/(NJ*NI))+1          !k
+		!	enddo
+		!endif
+
+		!ПО ЦИКЛУ k - ПОСЛЕДОВАТЕЛЬНО
+		!if((i>=1).and.(i<=NI*NJ)) then
+		!	do ii=1,NK
+		!		X(i+(ii-1)*(NI*NJ),1) = MOD((i-1),NI)+1               !i
+		!		X(i+(ii-1)*(NI*NJ),2) = MOD(INT((i-1)/NI),NJ)+1       !j
+		!		X(i+(ii-1)*(NI*NJ),3) = ii							  !k
+		!	enddo
+		!endif
+
+		!ПО ЦИКЛУ i - ПОСЛЕДОВАТЕЛЬНО
+		!if((i>=1).and.(i<=NK*NJ)) then
+		!	do ii=1,NI
+		! ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ+1
+		! ii + (MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1-1)*NI + (INT(((i-1)*NI+ii-1)/(NI*NJ))+1-1)*NI*NJ
+		!		X((i-1)*NI+ii,1) = ii									      !i
+		!		X((i-1)*NI+ii,2) = MOD(INT(((i-1)*NI+ii-1)/NI),NJ)+1	      !j
+		!		X((i-1)*NI+ii,3) = INT(((i-1)*NI+ii-1)/(NI*NJ))+1		      !k
+		!	enddo
+		!endif
+
+		!ПО ЦИКЛУ j - ПОСЛЕДОВАТЕЛЬНО
+		!if((i>=1).and.(i<=NK*NI)) then
+		!	do ii=1,NJ
+		!		X(MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ,1) = MOD((i-1),NI)+1					  !i
+		!		X(MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ,2) = ii								  !j
+		!		X(MOD((i-1),NI)+1 +(ii-1)*NI + (INT((i*NJ-1)/(NI*NJ))+1-1)*NI*NJ,3) = INT((i*NJ-1)/(NI*NJ))+1		      !k
+		!	enddo
+		!endif
+
+		!ПО ЦИКЛУ k,j - ПОСЛЕДОВАТЕЛЬНО (АНАЛОГИЧНО С ОСТАЛЬНЫМИ НАПРАВЛЕНИЯМИ ПРИ ДВУХ ПОСЛЕДОВАТЕЛЬНЫХ КООРДИНАТАХ)
+		!if((i>=1).and.(i<=NI)) then
+		!	do ii=1,NK
+		!		do jj=1,NJ
+		!			X(i+(jj-1)*NI+(ii-1)*(NI*NJ),1) = i			     				  !i
+		!			X(i+(jj-1)*NI+(ii-1)*(NI*NJ),2) = jj						      !j
+		!			X(i+(jj-1)*NI+(ii-1)*(NI*NJ),3) = ii							  !k
+		!		enddo
+		!	enddo
+		!endif
+
+	end subroutine
+
+	attributes(global) subroutine gpu_loop_2(X, Y, Z, NI, NJ, NK)
+		integer, device :: ii, NI, NJ, NK
+		real*8, device :: X(NI*NJ*NK), Y(NI*NJ*NK), Z(NI*NJ*NK)		
+
+		!	INT((i-1)/(NJ*NK))+1      - k
+		!	MOD(INT((i-1)/NJ),NK)+1   - j
+		!	MOD((i-1),NJ)+1           - i    	
+
+		i=(blockidx%x-1) * blockdim%x + threadidx%x
+		if((i>=1).and.(i<=NI*NJ*NK)) then
+				Z(i)=0.
+		endif
+
+		if((i>=1).and.(i<=NI*NJ)) then
+			do ii=0,NK
+				if(((INT((i+ii*(NI*NJ)-1)/(NJ*NK))+1).NE.1 ).and.((MOD(INT((i+ii*(NI*NJ)-1)/NJ),NK)+1).NE.1 ).and.&
+				((MOD((i+ii*(NI*NJ)-1),NJ)+1).NE.1 ).and.((INT((i+ii*(NI*NJ)-1)/(NJ*NK))+1).NE.22 ).and.((MOD(INT((i+ii*(NI*NJ)-1)/NJ),NK)+1).NE.22 ).and.&
+				((MOD((i+ii*(NI*NJ)-1),NJ)+1).NE.22 )) then
+					Z(i+ii*(NI*NJ)) = MOD((i+ii*(NI*NJ)-1),NJ)+1 + (MOD(INT((i+ii*(NI*NJ)-1)/NJ),NK)+1)*NI + 2*NI*NJ 
+				endif
+			enddo
+		endif
+	end subroutine
+
+
+	attributes(global) subroutine gpu_loop_1(X, Y, Z, NI, NJ, NK)
+		integer, device :: ii, NI, NJ, NK
+		real*8, device :: X(NI*NJ*NK), Y(NI*NJ*NK), Z(NI*NJ*NK)		
+
+		!	INT((i-1)/(NJ*NK))+1      - k
+		!	MOD(INT((i-1)/NJ),NK)+1   - j
+		!	MOD((i-1),NJ)+1           - i    	
+
+		i=(blockidx%x-1) * blockdim%x + threadidx%x
+		if((i>=1).and.(i<=NI*NJ*NK)) then
+			!do ii=0, 22*22
+				Z(i)=0.
+			!enddo
+		endif
+
+		!if((i>=1).and.(i<=NI)) then
+		!	do ii=0,NJ*NK
+		!		if(((INT((i+ii*(NI)-1)/(NJ*NK))+1).NE.1 ).and.((MOD(INT((i+ii*(NI)-1)/NJ),NK)+1).NE.1 ).and.&
+		!		((MOD((i+ii*(NI)-1),NJ)+1).NE.1 ).and.((INT((i+ii*(NI)-1)/(NJ*NK))+1).NE.22 ).and.((MOD(INT((i+ii*(NI)-1)/NJ),NK)+1).NE.22 ).and.&
+		!		((MOD((i+ii*(NI)-1),NJ)+1).NE.22 )) then
+		!			Z(i+ii*(NI)) = Z(i+ii*(NI)-NI)+1
+		!		endif
+		!	enddo
+		!endif
+
+		if((i>=1).and.(i<=NI*NJ)) then
+			do ii=0,NK
+				if(((INT((i+ii*(NI*NJ)-1)/(NJ*NK))+1).NE.1 ).and.((MOD(INT((i+ii*(NI*NJ)-1)/NJ),NK)+1).NE.1 ).and.&
+				((MOD((i+ii*(NI*NJ)-1),NJ)+1).NE.1 ).and.((INT((i+ii*(NI*NJ)-1)/(NJ*NK))+1).NE.22 ).and.((MOD(INT((i+ii*(NI*NJ)-1)/NJ),NK)+1).NE.22 ).and.&
+				((MOD((i+ii*(NI*NJ)-1),NJ)+1).NE.22 )) then
+					!Z(i+ii*(NI*NJ)) = Z(i+ii*(NI*NJ)-NI*NJ)+1
+					Z(i+ii*(NI*NJ)) = MOD((i+ii*(NI*NJ)-1),NJ)+1 + (MOD(INT((i+ii*(NI*NJ)-1)/NJ),NK)+1)*NI + 2*NI*NJ 
+				endif
+			enddo
+		endif
+
+
+		!if((i>=1).and.(i<=NI*NJ*NK)) then
+		!	Z(i) = i
+		!endif
+
+	end subroutine
+
+end module 
